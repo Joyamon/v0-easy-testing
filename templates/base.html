@@ -1,0 +1,787 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="zh_hans">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{% block title %}EasyTesting{% endblock %}</title>
+    {#    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">#}
+    <link href="{% static 'css/bootstrap.min.css' %} " rel="stylesheet">
+    <link rel="stylesheet" href="/static/css/custom.css">
+    {#    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.3/font/bootstrap-icons.css">#}
+    <link rel="stylesheet" href="{% static 'css/bootstrap-icons.css' %}">
+    <link rel="stylesheet" href="{% static 'css/sidebars.css' %}">
+    <link rel="icon" type="image/svg+xml" href="{% static 'svg/test.svg' %}">
+    <style>
+        :root {
+            --primary-color: #4361ee;
+            --secondary-color: #3f37c9;
+            --success-color: #4cc9f0;
+            --info-color: #4895ef;
+            --warning-color: #f72585;
+            --danger-color: #e63946;
+            --light-color: #f8f9fa;
+            --dark-color: #212529;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-color: #f5f7fb;
+            color: #333;
+        }
+
+        .sidebar {
+            position: fixed;
+            top: 0;
+            bottom: 0;
+            left: 0;
+            z-index: 100;
+            padding: 60px 0 0;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            background-color: #fff;
+            transition: all 0.3s;
+        }
+
+        .sidebar-sticky {
+            position: relative;
+            top: 0;
+            height: calc(100vh - 60px);
+            padding-top: 0.5rem;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+
+        .navbar {
+            height: 60px;
+            background: linear-gradient(135deg, var(--primary-color), var(--secondary-color));
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+        }
+
+        .navbar-brand {
+            font-weight: 600;
+            font-size: 1.25rem;
+            color: white;
+        }
+
+        .navbar-brand i {
+            margin-right: 0.5rem;
+        }
+
+        .nav-link {
+            padding: 0.8rem 1.5rem;
+            color: #555;
+            border-left: 3px solid transparent;
+            transition: all 0.2s;
+        }
+
+        .nav-link:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+            color: var(--primary-color);
+            border-left: 3px solid var(--primary-color);
+        }
+
+        .nav-link.active {
+            background-color: rgba(67, 97, 238, 0.1);
+            color: var(--primary-color);
+            border-left: 3px solid var(--primary-color);
+            font-weight: 500;
+        }
+
+        .nav-link i {
+            margin-right: 0.5rem;
+            width: 20px;
+            text-align: center;
+        }
+
+        .main-content {
+            margin-left: 250px;
+            padding: 30px;
+            transition: all 0.3s;
+        }
+
+        @media (max-width: 767.98px) {
+            .main-content {
+                margin-left: 0;
+            }
+
+            .sidebar {
+                transform: translateX(-100%);
+            }
+
+            .sidebar.show {
+                transform: translateX(0);
+            }
+        }
+
+        .card {
+            border: none;
+            border-radius: 10px;
+            box-shadow: 0 0.125rem 0.25rem rgba(0, 0, 0, 0.075);
+            transition: transform 0.3s, box-shadow 0.3s;
+            margin-bottom: 1.5rem;
+        }
+
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .card-header {
+            background-color: #fff;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+            font-weight: 600;
+            padding: 1rem 1.25rem;
+            border-radius: 10px 10px 0 0 !important;
+        }
+
+        .card-body {
+            padding: 1.25rem;
+        }
+
+        .btn-primary {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-primary:hover {
+            background-color: var(--secondary-color);
+            border-color: var(--secondary-color);
+        }
+
+        .btn-outline-primary {
+            color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .btn-outline-primary:hover {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+        }
+
+        .table {
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            border-top: none;
+        }
+
+        .table td, .table th {
+            padding: 0.75rem;
+            vertical-align: middle;
+        }
+
+        .table-hover tbody tr:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+
+        .badge {
+            padding: 0.5em 0.75em;
+            font-weight: 500;
+            border-radius: 30px;
+        }
+
+        .badge.bg-success {
+            background-color: rgba(76, 201, 240, 0.1) !important;
+            color: var(--success-color);
+        }
+
+        .badge.bg-danger {
+            background-color: rgba(230, 57, 70, 0.1) !important;
+            color: var(--danger-color);
+        }
+
+        .badge.bg-primary {
+            background-color: rgba(67, 97, 238, 0.1) !important;
+            color: var(--primary-color);
+        }
+
+        .badge.bg-secondary {
+            background-color: rgba(108, 117, 125, 0.1) !important;
+            color: #6c757d;
+        }
+
+        .form-control {
+            border-radius: 5px;
+            padding: 0.5rem 0.75rem;
+            border: 1px solid #ced4da;
+        }
+
+        .form-control:focus {
+            border-color: var(--primary-color);
+            box-shadow: 0 0 0 0.25rem rgba(67, 97, 238, 0.25);
+        }
+
+        .alert {
+            border-radius: 10px;
+            border: none;
+        }
+
+        .page-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+            padding-bottom: 1rem;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        .page-title {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin: 0;
+            color: #333;
+        }
+
+        .stat-card {
+            border-radius: 10px;
+            padding: 1.5rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+        }
+
+        .stat-card .stat-title {
+            font-size: 0.875rem;
+            font-weight: 500;
+            color: #6c757d;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .stat-value {
+            font-size: 2rem;
+            font-weight: 600;
+            margin-bottom: 0.5rem;
+        }
+
+        .stat-card .stat-link {
+            align-self: flex-start;
+            margin-top: auto;
+        }
+
+        .stat-card.primary {
+            background-color: rgba(67, 97, 238, 0.1);
+            color: var(--primary-color);
+        }
+
+        .stat-card.success {
+            background-color: rgba(76, 201, 240, 0.1);
+            color: var(--success-color);
+        }
+
+        .stat-card.info {
+            background-color: rgba(72, 149, 239, 0.1);
+            color: var(--info-color);
+        }
+
+        .stat-card.warning {
+            background-color: rgba(247, 37, 133, 0.1);
+            color: var(--warning-color);
+        }
+
+        /* 用户下拉菜单样式 */
+        .user-dropdown .dropdown-toggle::after {
+            display: none;
+        }
+
+        .user-dropdown .dropdown-menu {
+            min-width: 200px;
+            padding: 0.5rem 0;
+            margin-top: 0.5rem;
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .user-dropdown .dropdown-item {
+            padding: 0.5rem 1rem;
+        }
+
+        .user-dropdown .dropdown-item:hover {
+            background-color: rgba(67, 97, 238, 0.05);
+        }
+
+        .user-dropdown .dropdown-divider {
+            margin: 0.25rem 0;
+        }
+
+        .user-avatar {
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background-color: var(--primary-color);
+            color: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 600;
+            margin-right: 0.5rem;
+        }
+
+        .floating-ball-wrapper {
+            position: fixed;
+            inset: 0;
+            pointer-events: none;
+            z-index: 100;
+        }
+
+        .floating-ball {
+            position: absolute;
+            left: 95vw;
+            top: 80vh;
+            width: 50px;
+            height: 50px;
+            background: #0d6efd;
+            border-radius: 50%;
+            cursor: grab;
+            transition: box-shadow 0.3s, transform 0.3s;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 2rem;
+            pointer-events: auto;
+            user-select: none;
+        }
+
+        .floating-ball:active {
+            cursor: grabbing;
+        }
+
+        .floating-ball:hover {
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+            transform: scale(1.08);
+        }
+
+    </style>
+    {% block extra_css %}{% endblock %}
+</head>
+<body>
+<header class="navbar navbar-dark sticky-top flex-md-nowrap p-0 shadow">
+    <a class="navbar-brand col-md-3 col-lg-2 me-0 px-3" href="{% url 'dashboard' %}">
+        <i class="bi bi-speedometer2"></i> EasyTesting
+    </a>
+    <button class="navbar-toggler position-absolute d-md-none collapsed" type="button" data-bs-toggle="collapse"
+            data-bs-target="#sidebarMenu" aria-controls="sidebarMenu" aria-expanded="true"
+            aria-label="Toggle navigation">
+        <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="w-100"></div>
+    <div class="navbar-nav">
+        <div class="nav-item text-nowrap user-dropdown">
+            {% if user.is_authenticated %}
+                <div class="dropdown">
+                    <a class="nav-link px-3 text-white dropdown-toggle d-flex align-items-center" href="#"
+                       id="userDropdown" role="button" data-bs-toggle="dropdown" aria-expanded="true">
+                        <div class="user-avatar">{{ user.username|first|upper }}</div>
+                        <span class="d-none d-md-inline">{{ user.username }}</span>
+                    </a>
+                    <ul class="dropdown-menu dropdown-menu-end" aria-labelledby="userDropdown">
+                        {#                        <li><a class="dropdown-item" href="{% url 'profile' %}"><i class="bi bi-person me-2"></i>个人资料</a>#}
+                        {#                        </li>#}
+                        <li><a class="dropdown-item" href="{% url 'edit_profile' %}"><i class="bi bi-gear me-2"></i>账户设置</a>
+                        </li>
+                        <li>
+                            <hr class="dropdown-divider">
+                        </li>
+                        <li><a class="dropdown-item" href="{% url 'logout' %}"><i
+                                class="bi bi-box-arrow-right me-2"></i>退出登录</a></li>
+                    </ul>
+                </div>
+            {% else %}
+                <a class="nav-link px-3 text-white" href="{% url 'login' %}">
+                    <i class="bi bi-box-arrow-in-right"></i> 登录
+                </a>
+            {% endif %}
+        </div>
+    </div>
+</header>
+<div class="b-example-divider b-example-vr"></div>
+<div class="container-fluid">
+    <div class="row">
+        <nav id="sidebarMenu" class="col-md-3 col-lg-2 d-md-block sidebar collapse">
+            <div class="position-sticky pt-3">
+                <div class="flex-shrink-0 p-3" style="width: 280px;">
+                    <a href="#"
+                       class="d-flex align-items-center pb-3 mb-3 link-body-emphasis text-decoration-none border-bottom">
+                        <svg class="bi pe-none me-2" width="20" height="24" aria-hidden="false"></svg>
+                        <span class="fs-5 fw-semibold">EasyTesting</span>
+                    </a>
+                    <ul class="list-unstyled ps-0">
+                        <!-- 测试管理菜单组 -->
+                        <li class="mb-1">
+                            <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0 {% if '/dashboard/' in request.path or  '/task-monitor/' in request.path or '/projects/' in request.path or '/environments/' in request.path or '/test-cases/' in request.path or '/test-suites/' in request.path or '/test-runs/' in request.path or '/reports/' in request.path or 'test-case-groups' in request.path or 'test-suite-groups' in request.path or 'scheduled-tasks' in request.path or 'mock-data' in request.path %}collapsed{% else %}collapsed{% endif %}"
+                                    data-bs-toggle="collapse"
+                                    data-bs-target="#test-management-collapse"
+                                    aria-expanded="{% if '/dashboard/' in request.path or '/projects/' in request.path or '/environments/' in request.path or  '/task-monitor/' in request.path or '/test-cases/' in request.path or '/test-suites/' in request.path or '/test-runs/' in request.path or '/reports/' in request.path or 'test-case-groups' in request.path or 'test-suite-groups' in request.path or 'scheduled-tasks' in request.path or 'mock-data' in request.path %}true{% else %}false{% endif %}"
+                                    aria-controls="test-management-collapse">
+                                <i class="bi bi-calendar-range-fill me-lg-2" style="color: cornflowerblue"></i>测试管理
+                            </button>
+                            <div class="collapse {% if '/dashboard/' in request.path or '/projects/' in request.path or '/environments/' in request.path or  '/task-monitor/' in request.path or '/test-cases/' in request.path or '/test-suites/' in request.path or '/test-runs/' in request.path or '/reports/' in request.path or 'test-case-groups' in request.path or 'test-suite-groups' in request.path or 'scheduled-tasks' in request.path or 'mock-data' in request.path %}show{% endif %}"
+                                 id="test-management-collapse">
+                                <ul class="nav flex-column mb-2">
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if request.path == '/dashboard/' %}active{% endif %}"
+                                           href="{% url 'dashboard' %}">
+                                            <i class="bi bi-speedometer2" style="color: cornflowerblue"></i> 仪表盘
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/projects/' in request.path %}active{% endif %}"
+                                           href="{% url 'project_list' %}">
+                                            <i class="bi bi-projector-fill" style="color: cornflowerblue"></i> 项目
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/environments/' in request.path %}active{% endif %}"
+                                           href="{% url 'environment_list' %}">
+                                            <i class="bi bi-gear-fill" style="color: cornflowerblue"></i> 环境
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/test-cases/' in request.path %}active{% endif %}"
+                                           href="{% url 'test_case_list' %}">
+                                            <i class="bi bi-briefcase-fill" style="color: cornflowerblue"></i> 测试用例
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/test-suites/' in request.path %}active{% endif %}"
+                                           href="{% url 'test_suite_list' %}">
+                                            <i class="bi bi-collection" style="color: cornflowerblue"></i> 测试套件
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/test-runs/' in request.path %}active{% endif %}"
+                                           href="{% url 'test_run_list' %}">
+                                            <i class="bi bi-play-circle-fill" style="color: cornflowerblue"></i> 测试运行
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/test-case-groups/' in request.path %}active{% endif %}"
+                                           href="{% url 'test_case_group_list' %}">
+                                            <i class="bi bi-collection-fill me-2" style="color: cornflowerblue"></i>
+                                            <span>测试用例分组</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/test-suite-groups/' in request.path %}active{% endif %}"
+                                           href="{% url 'test_suite_group_list' %}">
+                                            <i class="bi bi-collection-fill me-2" style="color: cornflowerblue"></i>
+                                            <span>测试套件分组</span>
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/reports/' in request.path %}active{% endif %}"
+                                           href="{% url 'test_report_list' %}">
+                                            <i class="bi bi-reply-all-fill" style="color: cornflowerblue"></i> 测试报告
+                                        </a>
+                                    </li>
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/mock-data/' in request.path %}active{% endif %}"
+                                           href="{% url 'mock-data-list' %}">
+                                            <i class="bi bi-clipboard-data-fill" style="color: cornflowerblue"></i>
+                                            mock数据
+                                        </a>
+                                    </li>
+                                    <!-- 定时任务 -->
+                                    <li class="nav-item">
+                                        <a class="nav-link {% if '/scheduled-tasks/' in request.path %}active{% endif %}"
+                                           href="{% url 'scheduled_task_list' %}">
+                                            <i class="bi bi-clock-fill" style="color: cornflowerblue"></i> 定时任务
+                                        </a>
+                                    </li>
+                                 <!--定时任务监控 -->
+                                <li class="nav-item">
+                                    <a class="nav-link {% if '/task-monitor/' in request.path %}active{% endif %}"
+                                       href="{% url 'task_monitor' %}">
+                                        <i class="bi bi-clock-history" style="color: cornflowerblue"></i> 定时任务监控
+                                    </a>
+                                </li>
+
+
+                                </ul>
+                            </div>
+                        </li>
+
+                        {% if user.is_authenticated %}
+                            <!-- 用户&设置菜单组 -->
+                            <li class="mb-1">
+                                <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0 {% if '/profile/' in request.path or '/password-change/' in request.path or '/email-config' in request.path %}collapsed{% else %}collapsed{% endif %}"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#user-settings-collapse"
+                                        aria-expanded="{% if '/profile/' in request.path or '/password-change/' in request.path or '/email-config' in request.path %}true{% else %}false{% endif %}"
+                                        aria-controls="user-settings-collapse">
+                                    <i class="bi bi-sliders me-lg-2" style="color: cornflowerblue"></i>用户&设置
+                                </button>
+                                <div class="collapse {% if '/profile/' in request.path or '/password-change/' in request.path or '/email-config' in request.path %}show{% endif %}"
+                                     id="user-settings-collapse">
+                                    <ul class="nav flex-column mb-2">
+                                        <li class="nav-item">
+                                            <a class="nav-link {% if '/profile/' in request.path %}active{% endif %}"
+                                               href="{% url 'profile' %}">
+                                                <i class="bi bi-person-fill" style="color: cornflowerblue"></i> 个人资料
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link {% if '/password-change/' in request.path %}active{% endif %}"
+                                               href="{% url 'password_change' %}">
+                                                <i class="bi bi-lock-fill" style="color: cornflowerblue"></i> 修改密码
+                                            </a>
+                                        </li>
+                                        <li class="nav-item">
+                                            <a class="nav-link {% if '/email_config' in request.path %}active{% endif %}"
+                                               href="{% url 'email_config_list' %}">
+                                                <i class="bi bi-envelope-fill" style="color: cornflowerblue"></i> 邮件配置
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
+
+                            <!-- 管理后台菜单组 -->
+                            <li class="mb-1">
+                                <button class="btn btn-toggle d-inline-flex align-items-center rounded border-0 collapsed"
+                                        data-bs-toggle="collapse"
+                                        data-bs-target="#admin-collapse"
+                                        aria-expanded="false"
+                                        aria-controls="admin-collapse">
+                                    <i class="bi bi-back me-lg-2" style="color: cornflowerblue"></i>管理后台
+                                </button>
+                                <div class="collapse" id="admin-collapse">
+                                    <ul class="nav flex-column mb-2">
+                                        <li class="nav-item">
+                                            <a class="nav-link" href="{% url 'admin:index' %}" target="_blank">
+                                                <i class="bi bi-laptop-fill" style="color: cornflowerblue"></i> 管理后台
+                                            </a>
+                                        </li>
+                                    </ul>
+                                </div>
+                            </li>
+                        {% endif %}
+                    </ul>
+                </div>
+            </div>
+        </nav>
+    </div>
+</div>
+
+
+<main class="col-md-9 ms-sm-auto col-lg-10 px-md-4 main-content">
+    {% if messages %}
+        <div class="messages mt-3">
+            {% for message in messages %}
+                <div class="alert alert-{{ message.tags }} alert-dismissible fade show" role="alert">
+                    {{ message }}
+                    <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
+                </div>
+            {% endfor %}
+        </div>
+    {% endif %}
+
+    <div class="page-header">
+        <h1 class="page-title">{% block header %}{% endblock %}</h1>
+        <div class="btn-toolbar mb-2 mb-md-0">
+            {% block header_buttons %}{% endblock %}
+        </div>
+    </div>
+    <!--悬浮球 -->
+    <div class="floating-ball-wrapper">
+        <div class="floating-ball shadow" title="点击查看文档">
+            <i class="bi bi-file-earmark text-white"></i>
+        </div>
+    </div>
+    <!--弹窗 -->
+    <div class="modal fade" id="floatingBallModal" tabindex="-1" aria-labelledby="floatingBallModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="floatingBallModalLabel">EasyTesting文档</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="关闭"></button>
+                </div>
+                <div class="modal-body">
+                    <div class="stat-card">
+                        <i class="bi bi-file-earmark-text-fill">
+                            <a href="https://gitee.com/joyamon/easy-testing/blob/master/README.md"
+                               target="_blank">EasyTesting README.md</a>
+                        </i>
+                        <i class="bi bi-file-earmark-text-fill">
+
+                            <a href="https://gitee.com/joyamon/easy-testing" target="_blank">EasyTesting 项目源码
+
+                            </a>
+                            &nbsp&nbsp&nbsp&nbsp&nbsp&nbsp<i class="bi bi-star-fill">stars:<span
+                                id="star-count">0</span></i>
+                        </i>
+                        <i class="bi bi-file-earmark-text-fill">
+
+                            <a href="https://gitee.com/joyamon/easy-testing/blob/master/EasyTesting%E6%93%8D%E4%BD%9C%E6%89%8B%E5%86%8C.md"
+                               target="_blank">EasyTesting 操作手册
+                            </a>
+                        </i>
+                    </div>
+                    <div class="modal-body">
+                        <div class="form-text">数据生成规则</div>
+
+                        <code class="bg-light px-2 py-md-2 rounded">
+                            string:随机英文字母、数字组合，可根据 length 指定长度
+                            integer:在 min/max 范围内随机生成
+                            float:指定精度随机生成
+                            email:生成格式化邮箱，如 nameXXXX@test.com
+                            datetime/date:随机生成日期时间
+                            enum/bool:随机选择或取 true/false
+
+                        </code>
+                        <div class="form-text">示例</div>
+                        <code class="bg-light px-2 py-1 rounded">
+                            [
+                            {"name": "age", "type": "integer", "min": 18, "max": 60, "required": False},
+                            {"name": "email", "type": "string", "format": "email", "required": True},
+                            {"name": "address", "type": "address", "required": False},
+                            {"name": "phone", "type": "phone", "required": False},
+                            {"name": "url", "type": "url", "required": False},
+                            {"name": "city", "type": "city", "required": False},
+                            {"name": "job", "type": "job", "required": False},
+                            {"name": "company", "type": "company", "required": False},
+                            {"name": "username", "type": "username", "required": False},
+                            ]
+
+                        </code>
+                    </div>
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% block content %}{% endblock %}
+</main>
+
+
+{#<script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/js/bootstrap.bundle.min.js"></script>#}
+<script src="{% static 'js/bootstrap.bundle.min.js' %}"></script>
+{#<script src="https://cdn.jsdelivr.net/npm/chart.js@3.7.1/dist/chart.min.js"></script>#}
+<script src="{% static 'js/chart.min.js' %}"></script>
+<script src="{% static 'js/sidebars.js' %}"></script>
+<script>
+    // 改进的侧边栏菜单控制
+    document.addEventListener('DOMContentLoaded', function () {
+        // 处理菜单折叠/展开
+        const toggleButtons = document.querySelectorAll('.btn-toggle');
+
+        toggleButtons.forEach(button => {
+            button.addEventListener('click', function (e) {
+                // 阻止事件冒泡
+                e.stopPropagation();
+
+                // 获取目标collapse元素
+                const target = this.getAttribute('data-bs-target');
+                const collapseElement = document.querySelector(target);
+
+                if (collapseElement) {
+                    // 使用Bootstrap的Collapse API
+                    const bsCollapse = new bootstrap.Collapse(collapseElement, {
+                        toggle: false
+                    });
+
+                    // 切换展开/折叠状态
+                    if (collapseElement.classList.contains('show')) {
+                        bsCollapse.hide();
+                    } else {
+                        bsCollapse.show();
+                    }
+                }
+            });
+        });
+
+        // 处理侧边栏在移动设备上的显示/隐藏
+        const sidebarToggle = document.querySelector('.navbar-toggler');
+        const sidebar = document.querySelector('.sidebar');
+
+        if (sidebarToggle && sidebar) {
+            sidebarToggle.addEventListener('click', function () {
+                sidebar.classList.toggle('show');
+            });
+        }
+
+        // 自动关闭警告消息
+        const alerts = document.querySelectorAll('.alert');
+        alerts.forEach(function (alert) {
+            setTimeout(function () {
+                const closeButton = alert.querySelector('.btn-close');
+                if (closeButton) {
+                    closeButton.click();
+                }
+            }, 5000);
+        });
+    });
+</script>
+
+<script>
+    // 必须在DOM加载完毕后执行
+    document.addEventListener('DOMContentLoaded', function () {
+        var tooltipTriggerList = [].slice.call(document.querySelectorAll('[data-bs-toggle="tooltip"]'));
+        tooltipTriggerList.forEach(function (tooltipTriggerEl) {
+            new bootstrap.Tooltip(tooltipTriggerEl);
+        });
+    });
+
+    const ball = document.querySelector('.floating-ball');
+    let isDragging = false, offsetX = 0, offsetY = 0, moved = false;
+
+    ball.addEventListener('mousedown', function (e) {
+        isDragging = true;
+        moved = false;
+        const rect = ball.getBoundingClientRect();
+        offsetX = e.clientX - rect.left;
+        offsetY = e.clientY - rect.top;
+        ball.style.transition = 'none';
+        document.body.style.userSelect = 'none';
+    });
+
+    document.addEventListener('mousemove', function (e) {
+        if (!isDragging) return;
+        moved = true;
+        const left = e.clientX - offsetX;
+        const top = e.clientY - offsetY;
+        ball.style.left = left + 'px';
+        ball.style.top = top + 'px';
+    });
+
+    document.addEventListener('mouseup', function (e) {
+        if (isDragging) {
+            isDragging = false;
+            ball.style.transition = 'box-shadow 0.3s, transform 0.3s';
+            document.body.style.userSelect = '';
+        }
+    });
+
+    ball.addEventListener('click', function (e) {
+        if (!moved) {
+            const myModal = new bootstrap.Modal(document.getElementById('floatingBallModal'));
+            myModal.show();
+        }
+    });
+</script>
+{#<script>#}
+{#    fetch('https://gitee.com/api/v5/repos/Joyamon/easy-testing')#}
+{#        .then(response => response.json())      // 把响应转为JSON对象#}
+{#        .then(data => {#}
+{#            // 找到指定的HTML元素#}
+{#            const starCountElement = document.getElementById('star-count');#}
+{#            // 渲染star数量#}
+{#            starCountElement.textContent = data.stargazers_count;     // 处理返回的数据#}
+{#        })#}
+{#        .catch(error => {#}
+{#            console.error('请求失败:', error);#}
+{#        });#}
+{##}
+{##}
+{#</script>#}
+{% block extra_js %}{% endblock %}
+</body>
+</html>

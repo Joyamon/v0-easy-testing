@@ -1,0 +1,123 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+{% block title %}生成测试数据 - EasyTesting{% endblock %}
+
+{% block header %}生成测试数据{% endblock %}
+{% block header_buttons %}
+    <a href="{% url 'mock-data' %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> 生成测试数据
+    </a>
+{% endblock %}
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            {% if project %}
+                <div class="alert alert-info mb-4">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <div>
+                            <strong>过滤项目:</strong> {{ project.name }}
+                            <a href="{% url 'test_run_list' %}" class="btn btn-sm btn-outline-primary ms-3">
+                                <i class="bi bi-x-lg"></i>清除过滤
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>用途</th>
+                        <th>描述</th>
+                        <th>数据</th>
+                        <th>生成时间</th>
+                        <th>更新时间</th>
+                        <th>创建人</th>
+                        <th class="text-end">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for md in mock_data_list %}
+                        <tr>
+                            <td>
+                                {{ md.aim }}
+                            </td>
+                            <td>
+                                {{ md.description  |default:"-" }}
+                            </td>
+                            <td>
+                                <button type="button" class="btn btn-primary btn-sm position-relative" data-bs-toggle="modal"
+                                        data-bs-target="#exampleModal{{ md.id }}">
+                                    查看数据
+                                    <span class="badge text-bg-info">{{ md.data|trans_type|length }}</span>
+                                </button>
+
+                            </td>
+                            <td>{{ md.created_at|date:"Y-m-d H:i"|default:"-" }}</td>
+                            <td>{{ md.updated_at|date:"Y-m-d H:i"|default:"-" }}</td>
+                            <td>{{ md.created_by.username }}</td>
+                            <td class="text-end">
+                                <a href="{% url 'mock-data-delete' pk=md.id %}" class="btn btn-sm btn-outline-danger">
+                                    <i class="bi bi-trash"></i>
+                                </a>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <div class="py-5">
+                                    <i class="bi bi-play-circle display-4 text-muted mb-3"></i>
+                                    <h5>暂无数据</h5>
+                                    <p class="text-muted">运行生成测试数据</p>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+
+                </table>
+
+
+            </div>
+
+
+            {% include 'pagination.html' with page_obj=test_runs %}
+        </div>
+
+    </div>
+    <!-- Modal -->
+    {% for md in mock_data_list %}
+        <div class="modal fade mb-4" id="exampleModal{{ md.id }}" tabindex="-1"
+             aria-labelledby="exampleModalLabel{{ md.id }}"
+             aria-hidden="true">
+
+            <div class="modal-dialog modal-dialog-scrollable modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header">
+                        <h1 class="modal-title fs-5" id="exampleModalLabel{{ md.id }}">mock数据</h1>
+                        <button type="button" class="btn-close" data-bs-dismiss="modal"
+                                aria-label="Close"></button>
+                    </div>
+                    <div class="modal-body">
+                        <pre class="bg-light p-3 rounded"><code>{{ md.data }}</code></pre>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">
+                            关闭
+                        </button>
+                        <!-- 导出数据-->
+                        <a href="{% url 'mock-data-export' pk=md.id %}" class="btn btn-primary">
+                            导出数据
+                        </a>
+
+                    </div>
+                </div>
+            </div>
+
+        </div>
+    {% endfor %}
+
+
+{% endblock %}

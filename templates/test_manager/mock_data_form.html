@@ -1,0 +1,57 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - EasyTesting{% endblock %}
+
+{% block header %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-8">
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+                    <div class="mb-4">
+                        <label for="{{ form.aim.id_for_label }}" class="form-label fw-medium">条数</label>
+                        {{ form.aim.errors }}
+                        <input type="number" class="form-control form-control-lg"  name="num" value="num" required placeholder="数据生成条数...">
+                        <div class="form-text">数据生成条数</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.aim.id_for_label }}" class="form-label fw-medium">用途</label>
+                        {{ form.aim.errors }}
+                        <input type="text" class="form-control form-control-lg" id="{{ form.aim.id_for_label }}" name="{{ form.aim.html_name }}" value="{{ form.aim.value|default:'' }}" required placeholder="描述数据用途...">
+                        <div class="form-text">描述数据用途</div>
+                    </div>
+                    <div class="mb-4">
+                        <label for="{{ form.description.id_for_label }}" class="form-label fw-medium">描述</label>
+                        {{ form.description.errors }}
+                        <input type="text" class="form-control form-control-lg" id="{{ form.description.id_for_label }}" name="{{ form.description.html_name }}" value="{{ form.description.value|default:'' }}" required placeholder="简单描述数据...">
+                        <div class="form-text">简单描述数据</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.data.id_for_label }}" class="form-label fw-medium">定义生成数据规则</label>
+                        {{ form.data.errors }}
+                        <textarea class="form-control" id="{{ form.data.id_for_label }}" name="{{ form.data.html_name }}" rows="4"
+                                  placeholder='输入数据生成格式（List）:[{"name": "username", "type": "username", "required": False},
+                                  {"name": "phone", "type": "phone", "required": False},
+                                  {"name": "url", "type": "url", "required": False}]'>{{ form.data.value|default:'' }}</textarea>
+                        <div class="form-text">输入数据生成格式</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% url 'mock-data-list' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> 取消
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-check-lg"></i> 保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

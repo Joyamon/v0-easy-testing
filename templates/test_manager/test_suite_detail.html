@@ -1,0 +1,568 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ test_suite.name }} - EasyTesting{% endblock %}
+
+{% block header %}测试套件: {{ test_suite.name }}{% endblock %}
+
+{% block header_buttons %}
+    <div class="btn-group">
+        <a href="{% url 'test_suite_edit' pk=test_suite.pk %}" class="btn btn-outline-secondary">
+            <i class="bi bi-pencil"></i> 编辑
+        </a>
+        <a href="{% url 'test_suite_run' pk=test_suite.pk %}" class="btn btn-success">
+            <i class="bi bi-play-fill"></i> 运行
+        </a>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>测试套件详情</span>
+                    <a href="{% url 'test_suite_edit' pk=test_suite.pk %}" class="btn btn-sm btn-outline-secondary">
+                        <i class="bi bi-pencil"></i>
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h5 class="text-muted mb-2">项目</h5>
+                        <p>
+                            <a href="{% url 'project_detail' pk=test_suite.project.pk %}" class="text-decoration-none">
+                                {{ test_suite.project.name }}
+                            </a>
+                        </p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h5 class="text-muted mb-2">描述</h5>
+                        <p>{{ test_suite.description|default:"No description provided" }}</p>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-12 mb-3">
+                            <h5 class="text-muted mb-2">创建人</h5>
+                            <div class="d-flex align-items-center">
+                            <span class="avatar avatar-sm bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                                  style="width: 30px; height: 30px;">
+                                {{ test_suite.created_by.username|first|upper }}
+                            </span>
+                                <span>{{ test_suite.created_by.username }}</span>
+                            </div>
+                        </div>
+
+                        <div class="col-md-6 mb-3">
+                            <h5 class="text-muted mb-2">创建时间</h5>
+                            <p class="mb-0">{{ test_suite.created_at|date:"Y-m-d H:i" }}</p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5 class="text-muted mb-2">更新时间</h5>
+                            <p class="mb-0">{{ test_suite.updated_at|date:"Y-m-d H:i" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8 mb-4">
+            <div class="card h-100">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>测试用例</span>
+                    <button type="button" class="btn btn-sm btn-primary" data-bs-toggle="modal"
+                            data-bs-target="#addTestCaseModal">
+                        <i class="bi bi-plus-lg"></i> 添加测试用例
+                    </button>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                            <tr>
+                                <th>Order</th>
+                                <th>名称</th>
+                                <th>请求方式</th>
+                                <th>URL</th>
+                                <th>环境</th>
+                                <th class="text-end">操作</th>
+                            </tr>
+                            </thead>
+                            <tbody id="test-cases-list">
+                            {% for test_suite_case in test_suite_cases %}
+                                <tr>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ test_suite_case.order }}</span>
+                                    </td>
+                                    <td>
+                                        <a href="{% url 'test_case_detail' pk=test_suite_case.test_case.pk %}"
+                                           class="text-decoration-none">
+                                            {{ test_suite_case.test_case.name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                        <span class="badge
+                                            {% if test_suite_case.test_case.request_method == 'GET' %}bg-success{% endif %}
+                                            {% if test_suite_case.test_case.request_method == 'POST' %}bg-primary{% endif %}
+                                            {% if test_suite_case.test_case.request_method == 'PUT' %}bg-warning{% endif %}
+                                            {% if test_suite_case.test_case.request_method == 'DELETE' %}bg-danger{% endif %}
+                                            {% if test_suite_case.test_case.request_method == 'PATCH' %}bg-info{% endif %}
+                                        ">
+                                            {{ test_suite_case.test_case.request_method }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        <code class="bg-light px-2 py-1 rounded text-truncate d-inline-block"
+                                              style="max-width: 200px;">
+                                            {{ test_suite_case.test_case.request_url }}
+                                        </code>
+                                    </td>
+                                    <td>
+                                        <select class="form-select form-select-sm environment-select"
+                                                data-suite-id="{{ test_suite.id }}"
+                                                data-case-id="{{ test_suite_case.test_case.id }}">
+                                            <option value="">默认</option>
+                                            {% for env in environments %}
+                                                <option value="{{ env.id }}"
+                                                        {% if test_suite_case.environment.id == env.id %}selected{% endif %}>
+                                                    {{ env.name }}
+                                                </option>
+                                            {% endfor %}
+                                        </select>
+                                    </td>
+                                    <td class="text-end">
+                                        <div class="btn-group">
+                                            <a href="{% url 'test_case_detail' pk=test_suite_case.test_case.pk %}"
+                                               class="btn btn-sm btn-outline-primary">
+                                                <i class="bi bi-eye"></i>
+                                            </a>
+                                            <button type="button" class="btn btn-sm btn-outline-danger"
+                                                    onclick="removeTestCase({{ test_suite.id }}, {{ test_suite_case.test_case.id }})">
+                                                <i class="bi bi-trash"></i>
+                                            </button>
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="bi bi-info-circle me-2"></i> 套件中还没有测试用例
+                                        </div>
+                                        <button type="button" class="btn btn-sm btn-primary mt-2" data-bs-toggle="modal"
+                                                data-bs-target="#addTestCaseModal">
+                                            <i class="bi bi-plus-lg"></i> 添加测试用例
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span>最近测试运行</span>
+                    <a href="{% url 'test_suite_run' pk=test_suite.pk %}" class="btn btn-sm btn-success">
+                        <i class="bi bi-play-fill"></i> 运行
+                    </a>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>默认环境</th>
+                                <th>状态</th>
+                                <th>开始时间</th>
+                                <th>结束时间</th>
+                                <th>创建时间</th>
+                                <th class="text-end">操作</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for test_run in test_runs %}
+                                <tr>
+                                    <td>{{ test_run.name }}</td>
+                                    <td>{{ test_run.environment.name }}</td>
+                                    <td>
+                                        {% if test_run.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif test_run.status == 'failed' %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% elif test_run.status == 'running' %}
+                                            <span class="badge bg-primary">Running</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ test_run.start_time|date:"Y-m-d H:i"|default:"-" }}</td>
+                                    <td>{{ test_run.end_time|date:"Y-m-d H:i"|default:"-" }}</td>
+                                    <td>{{ test_run.created_by.username }}</td>
+                                    <td class="text-end">
+                                        <a href="{% url 'test_run_detail' pk=test_run.pk %}"
+                                           class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="bi bi-info-circle me-2"></i> 暂时没有测试运行记录
+                                        </div>
+                                        <a href="{% url 'test_suite_run' pk=test_suite.pk %}"
+                                           class="btn btn-sm btn-success mt-2">
+                                            <i class="bi bi-play-fill"></i> 立即运行
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Test Case Modal -->
+    <div class="modal fade" id="addTestCaseModal" tabindex="-1" aria-labelledby="addTestCaseModalLabel"
+         aria-hidden="true">
+        <div class="modal-dialog modal-lg">
+            <div class="modal-content">
+                <div class="modal-header">
+                    <h5 class="modal-title" id="addTestCaseModalLabel">添加测试用例</h5>
+                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                </div>
+                <div class="modal-body">
+                    {% if grouped_test_cases or ungrouped_test_cases %}
+                        <!-- 搜索框 -->
+                        <div class="mb-3">
+                            <div class="input-group">
+                                <span class="input-group-text"><i class="bi bi-search"></i></span>
+                                <input type="text" class="form-control" id="searchTestCase" placeholder="输入测试用例...">
+                            </div>
+                        </div>
+
+                        <!-- 分组测试用例 -->
+                        {% if grouped_test_cases %}
+                            <div class="accordion mb-3" id="testCaseGroupsAccordion">
+                                {% for group_id, group_data in grouped_test_cases.items %}
+                                    <div class="accordion-item">
+                                        <h2 class="accordion-header" id="heading{{ group_id }}">
+                                            <button class="accordion-button collapsed" type="button" data-bs-toggle="collapse"
+                                                    data-bs-target="#collapse{{ group_id }}" aria-expanded="false"
+                                                    aria-controls="collapse{{ group_id }}">
+                                                <i class="bi bi-folder me-2"></i> {{ group_data.group.name }}
+                                                <span class="badge bg-secondary ms-2">{{ group_data.test_cases.count }}</span>
+                                            </button>
+                                        </h2>
+                                        <div id="collapse{{ group_id }}" class="accordion-collapse collapse"
+                                             aria-labelledby="heading{{ group_id }}" data-bs-parent="#testCaseGroupsAccordion">
+                                            <div class="accordion-body p-0">
+                                                <div class="table-responsive">
+                                                    <table class="table table-hover mb-0">
+                                                        <thead>
+                                                        <tr>
+                                                            <th>名称</th>
+                                                            <th>请求方式</th>
+                                                            <th>URL</th>
+                                                            <th>环境</th>
+                                                            <th>操作</th>
+                                                        </tr>
+                                                        </thead>
+                                                        <tbody class="test-case-list">
+                                                        {% for test_case in group_data.test_cases %}
+                                                            <tr class="test-case-item" data-name="{{ test_case.name|lower }}">
+                                                                <td>{{ test_case.name }}</td>
+                                                                <td>
+                                                                    <span class="badge
+                                                                        {% if test_case.request_method == 'GET' %}bg-success{% endif %}
+                                                                        {% if test_case.request_method == 'POST' %}bg-primary{% endif %}
+                                                                        {% if test_case.request_method == 'PUT' %}bg-warning{% endif %}
+                                                                        {% if test_case.request_method == 'DELETE' %}bg-danger{% endif %}
+                                                                        {% if test_case.request_method == 'PATCH' %}bg-info{% endif %}
+                                                                    ">
+                                                                        {{ test_case.request_method }}
+                                                                    </span>
+                                                                </td>
+                                                                <td>
+                                                                    <code class="bg-light px-2 py-1 rounded text-truncate d-inline-block"
+                                                                          style="max-width: 200px;">
+                                                                        {{ test_case.request_url }}
+                                                                    </code>
+                                                                </td>
+                                                                <td>
+                                                                    <select class="form-select form-select-sm add-environment-select"
+                                                                            data-case-id="{{ test_case.id }}">
+                                                                        <option value="">Default</option>
+                                                                        {% for env in environments %}
+                                                                            <option value="{{ env.id }}">{{ env.name }}</option>
+                                                                        {% endfor %}
+                                                                    </select>
+                                                                </td>
+                                                                <td>
+                                                                    {% if test_case.id in added_test_case_ids %}
+                                                                        <button type="button" class="btn btn-sm btn-success" disabled>
+                                                                            <i class="bi bi-check-lg"></i> 已添加
+                                                                        </button>
+                                                                    {% else %}
+                                                                        <button type="button" class="btn btn-sm btn-primary"
+                                                                                onclick="addTestCase({{ test_suite.id }}, {{ test_case.id }})">
+                                                                            <i class="bi bi-plus-lg"></i> 添加
+                                                                        </button>
+                                                                    {% endif %}
+                                                                </td>
+                                                            </tr>
+                                                        {% endfor %}
+                                                        </tbody>
+                                                    </table>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% endif %}
+
+                        <!-- 未分组测试用例 -->
+                        {% if ungrouped_test_cases %}
+                            <div class="card">
+                                <div class="card-header">
+                                    <i class="bi bi-file-earmark me-2"></i> 未分组测试用例
+                                    <span class="badge bg-secondary ms-2">{{ ungrouped_test_cases|length }}</span>
+                                </div>
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-hover mb-0">
+                                            <thead>
+                                            <tr>
+                                                <th>名称</th>
+                                                <th>请求方法</th>
+                                                <th>URL</th>
+                                                <th>环境</th>
+                                                <th>操作</th>
+                                            </tr>
+                                            </thead>
+                                            <tbody class="test-case-list">
+                                            {% for test_case in ungrouped_test_cases %}
+                                                <tr class="test-case-item" data-name="{{ test_case.name|lower }}">
+                                                    <td>{{ test_case.name }}</td>
+                                                    <td>
+                                                        <span class="badge
+                                                            {% if test_case.request_method == 'GET' %}bg-success{% endif %}
+                                                            {% if test_case.request_method == 'POST' %}bg-primary{% endif %}
+                                                            {% if test_case.request_method == 'PUT' %}bg-warning{% endif %}
+                                                            {% if test_case.request_method == 'DELETE' %}bg-danger{% endif %}
+                                                            {% if test_case.request_method == 'PATCH' %}bg-info{% endif %}
+                                                        ">
+                                                            {{ test_case.request_method }}
+                                                        </span>
+                                                    </td>
+                                                    <td>
+                                                        <code class="bg-light px-2 py-1 rounded text-truncate d-inline-block"
+                                                              style="max-width: 200px;">
+                                                            {{ test_case.request_url }}
+                                                        </code>
+                                                    </td>
+                                                    <td>
+                                                        <select class="form-select form-select-sm add-environment-select"
+                                                                data-case-id="{{ test_case.id }}">
+                                                            <option value="">默认</option>
+                                                            {% for env in environments %}
+                                                                <option value="{{ env.id }}">{{ env.name }}</option>
+                                                            {% endfor %}
+                                                        </select>
+                                                    </td>
+                                                    <td>
+                                                        {% if test_case.id in added_test_case_ids %}
+                                                            <button type="button" class="btn btn-sm btn-success" disabled>
+                                                                <i class="bi bi-check-lg"></i> 已添加
+                                                            </button>
+                                                        {% else %}
+                                                            <button type="button" class="btn btn-sm btn-primary"
+                                                                    onclick="addTestCase({{ test_suite.id }}, {{ test_case.id }})">
+                                                                <i class="bi bi-plus-lg"></i> 添加
+                                                            </button>
+                                                        {% endif %}
+                                                    </td>
+                                                </tr>
+                                            {% endfor %}
+                                            </tbody>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        {% endif %}
+                    {% else %}
+                        <div class="alert alert-info">
+                            <div class="d-flex">
+                                <i class="bi bi-info-circle-fill me-2 fs-5"></i>
+                                <div>
+                                    <strong>没有可用的测试用例</strong> 项目暂不存在测试用例。
+                                </div>
+                            </div>
+                        </div>
+                        <div class="text-center mt-3">
+                            <a href="{% url 'test_case_create' %}?project={{ test_suite.project.id }}"
+                               class="btn btn-primary">
+                                <i class="bi bi-plus-lg"></i> 新增测试用例
+                            </a>
+                        </div>
+                    {% endif %}
+                </div>
+                <div class="modal-footer">
+                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        function addTestCase(testSuiteId, testCaseId) {
+            // 获取CSRF令牌
+            const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]') || getCookie('csrftoken');
+
+            // 获取选择的环境
+            const environmentSelect = document.querySelector(`.add-environment-select[data-case-id="${testCaseId}"]`);
+            const environmentId = environmentSelect ? environmentSelect.value : '';
+
+            // 显示加载状态
+            const addButton = event.target.closest('button');
+            const originalText = addButton.innerHTML;
+            addButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span> Adding...';
+            addButton.disabled = true;
+
+            // 发送AJAX请求添加测试用例到套件
+            fetch(`/api/test-suites/${testSuiteId}/add_test_case/`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRFToken': csrftoken
+                },
+                body: JSON.stringify({
+                    test_case_id: testCaseId,
+                    environment_id: environmentId,
+                    order: document.querySelectorAll('#test-cases-list tr').length + 1
+                })
+            })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    console.log('Success:', data);
+                    // 重新加载页面以显示更新后的测试用例
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('Failed to add test case to suite. Please try again.');
+                    // 恢复按钮状态
+                    addButton.innerHTML = originalText;
+                    addButton.disabled = false;
+                });
+        }
+
+        // 辅助函数：获取Cookie值
+        function getCookie(name) {
+            let cookieValue = null;
+            if (document.cookie && document.cookie !== '') {
+                const cookies = document.cookie.split(';');
+                for (let i = 0; i < cookies.length; i++) {
+                    const cookie = cookies[i].trim();
+                    if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                        cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                        break;
+                    }
+                }
+            }
+            return cookieValue;
+        }
+
+        function removeTestCase(testSuiteId, testCaseId) {
+            if (confirm('Are you sure you want to remove this test case from the suite?')) {
+                // 获取CSRF令牌
+                const csrftoken = document.querySelector('[name=csrfmiddlewaretoken]') || getCookie('csrftoken');
+
+                // 显示加载状态
+                const removeButton = event.target.closest('button');
+                const originalHTML = removeButton.innerHTML;
+                removeButton.innerHTML = '<span class="spinner-border spinner-border-sm" role="status" aria-hidden="true"></span>';
+                removeButton.disabled = true;
+
+                // 发送AJAX请求从套件中移除测试用例
+                fetch(`/api/test-suites/${testSuiteId}/remove_test_case/`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': csrftoken
+                    },
+                    body: JSON.stringify({
+                        test_case_id: testCaseId
+                    })
+                })
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error(`Network response was not ok: ${response.status} ${response.statusText}`);
+                        }
+                        // 重新加载页面以显示更新后的测试用例
+                        window.location.reload();
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('Failed to remove test case from suite. Please try again.');
+                        // 恢复按钮状态
+                        removeButton.innerHTML = originalHTML;
+                        removeButton.disabled = false;
+                    });
+            }
+        }
+
+        // 搜索功能
+        document.addEventListener('DOMContentLoaded', function() {
+            const searchInput = document.getElementById('searchTestCase');
+            if (searchInput) {
+                searchInput.addEventListener('input', function() {
+                    const searchTerm = this.value.toLowerCase();
+                    const testCaseItems = document.querySelectorAll('.test-case-item');
+
+                    testCaseItems.forEach(item => {
+                        const name = item.getAttribute('data-name');
+                        if (name.includes(searchTerm)) {
+                            item.style.display = '';
+
+                            // 如果在折叠面板内，展开该面板
+                            const accordionBody = item.closest('.accordion-collapse');
+                            if (accordionBody && searchTerm.length > 0) {
+                                accordionBody.classList.add('show');
+                            }
+                        } else {
+                            item.style.display = 'none';
+                        }
+                    });
+
+                    // 如果搜索框为空，折叠所有面板
+                    if (searchTerm === '') {
+                        document.querySelectorAll('.accordion-collapse').forEach(panel => {
+                            panel.classList.remove('show');
+                        });
+                    }
+                });
+            }
+        });
+    </script>
+{% endblock %}

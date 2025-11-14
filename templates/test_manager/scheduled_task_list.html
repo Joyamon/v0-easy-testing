@@ -1,0 +1,259 @@
+{% extends 'base.html' %}
+
+{% block title %}定时任务 - EasyTesting{% endblock %}
+
+{% block header %}定时任务管理{% endblock %}
+
+{% block header_buttons %}
+    <div class="btn-group">
+        <a href="{% url 'scheduled_task_create' %}{% if test_suite %}?test_suite={{ test_suite.id }}{% endif %}"
+           class="btn btn-primary">
+            <i class="bi bi-plus-lg"></i> 新增定时任务
+        </a>
+        <!--定时任务监控 -->
+        <a href="{% url 'task_monitor' %}" class="btn btn-warning">
+            <i class="bi bi-eye"></i> 定时任务监控
+        </a>
+    </div>
+{% endblock %}
+
+{% block content %}
+    <div class="card">
+        <div class="card-body">
+            {% if test_suite %}
+                <div class="alert alert-info mb-4">
+                    <div class="d-flex align-items-center">
+                        <i class="bi bi-info-circle-fill me-2"></i>
+                        <div>
+                            <strong>过滤测试套件:</strong> {{ test_suite.name }}
+                            <a href="{% url 'scheduled_task_list' %}" class="btn btn-sm btn-outline-primary ms-3">
+                                <i class="bi bi-x-lg"></i> 清除过滤
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            {% endif %}
+
+            <!-- 搜索和过滤 -->
+            <div class="row mb-4">
+                <div class="col-md-8">
+                    <form method="get" class="d-flex">
+                        {% if test_suite %}
+                            <input type="hidden" name="test_suite" value="{{ test_suite.id }}">
+                        {% endif %}
+                        <div class="input-group">
+                            <input type="text" name="search" class="form-control"
+                                   placeholder="搜索任务名称、描述或测试套件..." value="{{ search_query }}">
+                            <button type="submit" class="btn btn-primary">
+                                <i class="bi bi-search"></i>
+                            </button>
+                        </div>
+                    </form>
+                </div>
+                <div class="col-md-4">
+                    <form method="get">
+                        {% if test_suite %}
+                            <input type="hidden" name="test_suite" value="{{ test_suite.id }}">
+                        {% endif %}
+                        {% if search_query %}
+                            <input type="hidden" name="search" value="{{ search_query }}">
+                        {% endif %}
+                        <select name="status" class="form-select" onchange="this.form.submit()">
+                            <option value="">所有状态</option>
+                            {% for value, label in status_choices %}
+                                <option value="{{ value }}"
+                                        {% if status_filter == value %}selected{% endif %}>{{ label }}</option>
+                            {% endfor %}
+                        </select>
+                    </form>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table table-hover">
+                    <thead>
+                    <tr>
+                        <th>任务名称</th>
+                        <th>测试套件</th>
+                        <th>执行环境</th>
+                        <th>调度类型</th>
+                        <th>下次执行</th>
+                        <th>状态</th>
+                        <th>成功率</th>
+                        <th class="text-end">操作</th>
+                    </tr>
+                    </thead>
+                    <tbody>
+                    {% for task in page_obj %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'scheduled_task_detail' pk=task.pk %}"
+                                   class="fw-medium text-decoration-none text-dark">
+                                    {{ task.name }}
+                                </a>
+                                {% if task.description %}
+                                    <br><small class="text-muted">{{ task.description|truncatechars:50 }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <a href="{% url 'test_suite_detail' pk=task.test_suite.pk %}"
+                                   class="text-decoration-none">
+                                    {{ task.test_suite.name }}
+                                </a>
+                            </td>
+                            <td>{{ task.environment.name }}</td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ task.get_schedule_type_display }}</span>
+                                {% if task.schedule_type == 'daily' and task.scheduled_time %}
+                                    <br><small class="text-muted">{{ task.scheduled_time|time:"H:i" }}</small>
+                                {% elif task.schedule_type == 'weekly' and task.weekday and task.scheduled_time %}
+                                    <br>
+                                    <small class="text-muted">周{{ task.weekday }} {{ task.scheduled_time|time:"H:i" }}</small>
+                                {% elif task.schedule_type == 'monthly' and task.day_of_month and task.scheduled_time %}
+                                    <br>
+                                    <small class="text-muted">每月{{ task.day_of_month }}日 {{ task.scheduled_time|time:"H:i" }}</small>
+                                {% elif task.schedule_type == 'cron' and task.cron_expression %}
+                                    <br><small class="text-muted">{{ task.cron_expression }}</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.next_run_time %}
+                                    <span class="text-primary">{{ task.next_run_time|date:"m-d H:i" }}</span>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.status == 'active' %}
+                                    <span class="badge bg-success">{{ task.get_status_display }}</span>
+                                {% elif task.status == 'paused' %}
+                                    <span class="badge bg-warning">{{ task.get_status_display }}</span>
+                                {% else %}
+                                    <span class="badge bg-secondary">{{ task.get_status_display }}</span>
+                                {% endif %}
+                                {% if not task.is_enabled %}
+                                    <br><small class="text-muted">已禁用</small>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if task.total_runs > 0 %}
+                                    <span class="{% if task.success_rate >= 80 %}text-success{% elif task.success_rate >= 60 %}text-warning{% else %}text-danger{% endif %}">
+                                {{ task.success_rate|floatformat:1 }}%
+                            </span>
+                                    <br>
+                                    <small class="text-muted">{{ task.successful_runs }}/{{ task.total_runs }}</small>
+                                {% else %}
+                                    <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end">
+                                <div class="btn-group">
+                                    <a href="{% url 'scheduled_task_detail' pk=task.pk %}"
+                                       class="btn btn-sm btn-outline-primary" title="查看详情">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'scheduled_task_edit' pk=task.pk %}"
+                                       class="btn btn-sm btn-outline-secondary" title="编辑">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <button type="button" class="btn btn-sm btn-outline-success"
+                                            onclick="runTaskNow({{ task.pk }})" title="立即执行">
+                                        <i class="bi bi-play-fill"></i>
+                                    </button>
+                                    <button type="button"
+                                            class="btn btn-sm {% if task.status == 'active' %}btn-outline-warning{% else %}btn-outline-info{% endif %}"
+                                            onclick="toggleTaskStatus({{ task.pk }})"
+                                            title="{% if task.status == 'active' %}暂停{% else %}激活{% endif %}">
+                                        <i class="bi bi-{% if task.status == 'active' %}pause{% else %}play{% endif %}"></i>
+                                    </button>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-danger dropdown-toggle"
+                                                data-bs-toggle="dropdown" title="更多操作">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item text-danger"
+                                                   href="{% url 'scheduled_task_delete' pk=task.pk %}">
+                                                <i class="bi bi-trash me-2"></i>删除任务
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5">
+                                <div class="py-5">
+                                    <i class="bi bi-clock display-4 text-muted mb-3"></i>
+                                    <h5>暂无定时任务</h5>
+                                    <p class="text-muted">创建您的第一个定时任务来自动执行测试套件</p>
+                                    <a href="
+
+                                            {% url 'scheduled_task_create' %}{% if test_suite %}?test_suite={{ test_suite.id }}{% endif %}"
+                                       class="btn btn-primary mt-2">
+                                        <i class="bi bi-plus-lg"></i> 创建定时任务
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            {% include 'pagination.html' with page_obj=page_obj %}
+        </div>
+    </div>
+
+    <script>
+        function runTaskNow(taskId) {
+            if (confirm('确定要立即执行这个定时任务吗？')) {
+                fetch(`/scheduled-tasks/${taskId}/run-now/`, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]'),
+                        'Content-Type': 'application/json',
+                    },
+                })
+                    .then(response => response.json())
+                    .then(data => {
+                        if (data.success) {
+                            alert(data.message);
+                            location.reload();
+                        } else {
+                            alert('执行失败: ' + data.message);
+                        }
+                    })
+                    .catch(error => {
+                        console.error('Error:', error);
+                        alert('执行失败，请稍后重试');
+                    });
+            }
+        }
+
+        function toggleTaskStatus(taskId) {
+            fetch(`/scheduled-tasks/${taskId}/toggle-status/`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]'),
+                    'Content-Type': 'application/json',
+                },
+            })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.success) {
+                        alert(data.message);
+                        location.reload();
+                    } else {
+                        alert('操作失败: ' + data.message);
+                    }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert('操作失败，请稍后重试');
+                });
+        }
+    </script>
+
+{% endblock %}

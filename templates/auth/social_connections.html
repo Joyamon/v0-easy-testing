@@ -1,0 +1,91 @@
+{% extends 'base.html' %}
+
+{% block title %}社交账户连接 - EasyTesting{% endblock %}
+
+{% block header %}社交账户连接{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-8 mx-auto">
+        <div class="card">
+            <div class="card-header">
+                <h5 class="mb-0">管理社交账户连接</h5>
+            </div>
+            <div class="card-body">
+                <p class="text-muted mb-4">
+                    连接您的社交账户，以便使用这些账户登录 EasyTesting。
+                </p>
+                
+                <div class="list-group mb-4">
+                    <!-- GitHub 连接 -->
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-github fs-4 me-3"></i>
+                            <div>
+                                <h6 class="mb-0">GitHub</h6>
+                                <small class="text-muted">
+                                    {% if github_account %}
+                                        已连接到 {{ github_account.extra_data.login }}
+                                    {% else %}
+                                        未连接
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                        <div>
+                            {% if github_account %}
+                                <form method="post" action="{% url 'socialaccount_disconnect' github_account.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        断开连接
+                                    </button>
+                                </form>
+                            {% else %}
+                                <a href="{% url 'socialaccount_connections' %}" class="btn btn-sm btn-outline-primary">
+                                    连接
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                    
+                    <!-- Google 连接 -->
+                    <div class="list-group-item d-flex justify-content-between align-items-center">
+                        <div class="d-flex align-items-center">
+                            <i class="bi bi-google fs-4 me-3"></i>
+                            <div>
+                                <h6 class="mb-0">Google</h6>
+                                <small class="text-muted">
+                                    {% if google_account %}
+                                        已连接到 {{ google_account.extra_data.email }}
+                                    {% else %}
+                                        未连接
+                                    {% endif %}
+                                </small>
+                            </div>
+                        </div>
+                        <div>
+                            {% if google_account %}
+                                <form method="post" action="{% url 'socialaccount_disconnect' google_account.id %}">
+                                    {% csrf_token %}
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        断开连接
+                                    </button>
+                                </form>
+                            {% else %}
+                                <a href="{% url 'socialaccount_connections' %}" class="btn btn-sm btn-outline-primary">
+                                    连接
+                                </a>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="alert alert-info">
+                    <i class="bi bi-info-circle me-2"></i>
+                    <strong>提示：</strong> 连接社交账户后，您可以使用这些账户登录 EasyTesting，无需输入用户名和密码。
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

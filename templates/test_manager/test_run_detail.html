@@ -1,0 +1,771 @@
+{% extends 'base.html' %}
+{% load custom_filters %}
+
+{% block title %}测试运行: {{ test_run.name }} - EasyTesting{% endblock %}
+
+{% block header %}测试运行: {{ test_run.name }}{% endblock %}
+
+{% block header_buttons %}
+    {% if test_run.test_suite %}
+        <a href="{% url 'test_suite_detail' pk=test_run.test_suite.pk %}" class="btn btn-outline-primary">
+            <i class="bi bi-collection"></i> 查看测试套件
+        </a>
+    {% endif %}
+
+    {% if test_run.status == 'running' %}
+        <button id="refreshButton" class="btn btn-outline-info">
+            <i class="bi bi-arrow-clockwise"></i> 刷新
+        </button>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+    <div class="row">
+        <div class="col-md-4 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">运行详情</h5>
+                </div>
+                <div class="card-body">
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-2">项目</h6>
+                        <p>
+                            <a href="{% url 'project_detail' pk=test_run.project.pk %}" class="text-decoration-none">
+                                <i class="bi bi-folder"></i> {{ test_run.project.name }}
+                            </a>
+                        </p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-2">环境</h6>
+                        <p>
+                            <a href="{% url 'environment_detail' pk=test_run.environment.pk %}"
+                               class="text-decoration-none">
+                                <i class="bi bi-hdd-rack"></i> {{ test_run.environment.name }}
+                            </a>
+                        </p>
+                    </div>
+
+                    {% if test_run.test_suite %}
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-2">测试套件</h6>
+                            <p>
+                                <a href="{% url 'test_suite_detail' pk=test_run.test_suite.pk %}"
+                                   class="text-decoration-none">
+                                    <i class="bi bi-collection"></i> {{ test_run.test_suite.name }}
+                                </a>
+                            </p>
+                        </div>
+                    {% endif %}
+
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-2">状态</h6>
+                        <p>
+                            {% if test_run.status == 'completed' %}
+                                <span class="badge bg-success">Completed</span>
+                            {% elif test_run.status == 'failed' %}
+                                <span class="badge bg-danger">Failed</span>
+                            {% elif test_run.status == 'running' %}
+                                <span class="badge bg-primary">
+                                  Running
+                                  <span class="spinner-border spinner-border-sm ms-1" role="status"
+                                        aria-hidden="true"></span>
+                              </span>
+                            {% else %}
+                                <span class="badge bg-secondary">{{ test_run.status|title }}</span>
+                            {% endif %}
+                        </p>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-2">创建人</h6>
+                        <div class="d-flex align-items-center">
+                      <span class="avatar avatar-sm bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center"
+                            style="width: 30px; height: 30px;">
+                          {{ test_run.created_by.username|first|upper }}
+                      </span>
+                            <span>{{ test_run.created_by.username }}</span>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <h6 class="text-muted mb-2">创建时间</h6>
+                        <p>{{ test_run.created_at|date:"Y-m-d H:i" }}</p>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-md-6 mb-3">
+                            <h6 class="text-muted mb-2">开始时间</h6>
+                            <p>{{ test_run.start_time|date:"Y-m-d H:i"|default:"-" }}</p>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h6 class="text-muted mb-2">结束时间</h6>
+                            <p>{{ test_run.end_time|date:"Y-m-d H:i"|default:"-" }}</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-md-8 mb-4">
+            <div class="card h-100 border-0 shadow-sm">
+                <div class="card-header bg-white">
+                    <h5 class="card-title mb-0">运行结果</h5>
+                </div>
+                <div class="card-body">
+                    <div class="row mb-4">
+                        <div class="col-md-3 mb-3">
+                            <div class="card bg-light border-0 shadow-sm h-100">
+                                <div class="card-body text-center">
+                                    <h6 class="text-muted mb-2">总计</h6>
+                                    <h2 class="mb-0">{{ total_tests }}</h2>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-0 shadow-sm h-100"
+                                 style="background-color: rgba(25, 135, 84, 0.1);">
+                                <div class="card-body text-center">
+                                    <h6 class="text-success mb-2">Passed</h6>
+                                    <h2 class="text-success mb-0">{{ passed_tests }}</h2>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-0 shadow-sm h-100"
+                                 style="background-color: rgba(220, 53, 69, 0.1);">
+                                <div class="card-body text-center">
+                                    <h6 class="text-danger mb-2">Failed</h6>
+                                    <h2 class="text-danger mb-0">{{ failed_tests }}</h2>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="col-md-3 mb-3">
+                            <div class="card border-0 shadow-sm h-100"
+                                 style="background-color: rgba(255, 193, 7, 0.1);">
+                                <div class="card-body text-center">
+                                    <h6 class="text-warning mb-2">Error</h6>
+                                    <h2 class="text-warning mb-0">{{ error_tests }}</h2>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="progress mb-4" style="height: 20px; border-radius: 10px;">
+                        {% if total_tests > 0 %}
+                            <div class="progress-bar bg-success" role="progressbar"
+                                 style="width: {{ passed_tests|percentage:total_tests }}%;"
+                                 aria-valuenow="{{ passed_tests }}"
+                                 aria-valuemin="0" aria-valuemax="{{ total_tests }}">{{ passed_tests }}</div>
+                            <div class="progress-bar bg-danger" role="progressbar"
+                                 style="width: {{ failed_tests|percentage:total_tests }}%;"
+                                 aria-valuenow="{{ failed_tests }}"
+                                 aria-valuemin="0" aria-valuemax="{{ total_tests }}">{{ failed_tests }}</div>
+                            <div class="progress-bar bg-warning" role="progressbar"
+                                 style="width: {{ error_tests|percentage:total_tests }}%;"
+                                 aria-valuenow="{{ error_tests }}"
+                                 aria-valuemin="0" aria-valuemax="{{ total_tests }}">{{ error_tests }}</div>
+                            <div class="progress-bar bg-secondary" role="progressbar"
+                                 style="width: {{ skipped_tests|percentage:total_tests }}%;"
+                                 aria-valuenow="{{ skipped_tests }}"
+                                 aria-valuemin="0" aria-valuemax="{{ total_tests }}">{{ skipped_tests }}</div>
+                        {% else %}
+                            <div class="progress-bar" role="progressbar" style="width: 0%;" aria-valuenow="0"
+                                 aria-valuemin="0" aria-valuemax="100">0%
+                            </div>
+                        {% endif %}
+                    </div>
+
+                    <div class="d-flex justify-content-between mb-3">
+                        <div>
+                            <span class="badge bg-success me-1">Passed: {{ passed_tests }}</span>
+                            <span class="badge bg-danger me-1">Failed: {{ failed_tests }}</span>
+                            <span class="badge bg-warning me-1">Error: {{ error_tests }}</span>
+                            <span class="badge bg-secondary">Skipped: {{ skipped_tests }}</span>
+                        </div>
+                    </div>
+
+                    {% if test_run.status == 'running' %}
+                        <div class="alert alert-info mt-3">
+                            <i class="bi bi-info-circle-fill me-2"></i> 此测试运行仍在进行中。页面将每5秒自动刷新一次
+                        </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="row">
+        <div class="col-md-12 mb-4">
+            <div class="card border-0 shadow-sm">
+                <div class="card-header bg-white d-flex justify-content-between align-items-center">
+                    <h5 class="card-title mb-0">测试结果</h5>
+                    <div class="btn-group">
+                        <a href="?page={{ page_obj.number }}{% if per_page %}&per_page={{ per_page }}{% endif %}"
+                           class="btn btn-sm {% if not request.GET.status %}btn-secondary{% else %}btn-outline-secondary{% endif %}"
+                           id="show-all-btn">All</a>
+                        <a href="?page=
+                                {{ page_obj.number }}{% if per_page %}&per_page={{ per_page }}{% endif %}&status=passed"
+                           class="btn btn-sm {% if request.GET.status == 'passed' %}btn-success{% else %}btn-outline-success{% endif %}"
+                           id="show-passed-btn">Passed</a>
+                        <a href="?page=
+                                {{ page_obj.number }}{% if per_page %}&per_page={{ per_page }}{% endif %}&status=failed"
+                           class="btn btn-sm {% if request.GET.status == 'failed' %}btn-danger{% else %}btn-outline-danger{% endif %}"
+                           id="show-failed-btn">Failed</a>
+                        <a href="?page=
+                                {{ page_obj.number }}{% if per_page %}&per_page={{ per_page }}{% endif %}&status=error"
+                           class="btn btn-sm {% if request.GET.status == 'error' %}btn-warning{% else %}btn-outline-warning{% endif %}"
+                           id="show-error-btn">Error</a>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-hover" id="results-table">
+                            <thead>
+                            <tr>
+                                <th>测试用例</th>
+                                <th>请求方法</th>
+                                <th>URL</th>
+                                <th>环境</th>
+                                <th>状态</th>
+                                <th>响应时间</th>
+                                <th>响应状态</th>
+                                <th class="text-end">操作</th>
+                            </tr>
+                            </thead>
+                            <tbody>
+                            {% for result in test_results %}
+                                <tr class="result-row {{ result.status }}">
+                                    <td>
+                                        <a href="{% url 'test_case_detail' pk=result.test_case.pk %}"
+                                           class="text-decoration-none">
+                                            {{ result.test_case.name }}
+                                        </a>
+                                    </td>
+                                    <td>
+                                      <span class="badge
+                                          {% if result.test_case.request_method == 'GET' %}bg-success{% endif %}
+                                          {% if result.test_case.request_method == 'POST' %}bg-primary{% endif %}
+                                          {% if result.test_case.request_method == 'PUT' %}bg-warning{% endif %}
+                                          {% if result.test_case.request_method == 'DELETE' %}bg-danger{% endif %}
+                                          {% if result.test_case.request_method == 'PATCH' %}bg-info{% endif %}
+                                      ">
+                                          {{ result.test_case.request_method }}
+                                      </span>
+                                    </td>
+                                    <td>
+                                        <code class="bg-light px-2 py-1 rounded text-truncate d-inline-block"
+                                              style="max-width: 200px;">
+                                            {{ result.test_case.request_url }}
+                                        </code>
+                                    </td>
+                                    <td>
+                                        <span class="badge bg-secondary">{{ result.environment.name }}</span>
+                                    </td>
+                                    <td>
+                                        {% if result.status == 'passed' %}
+                                            <span class="badge bg-success">Passed</span>
+                                        {% elif result.status == 'failed' %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% elif result.status == 'error' %}
+                                            <span class="badge bg-warning">Error</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Skipped</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ result.response_time|floatformat:2 }} ms</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ result.response_status_code }}</span>
+                                    </td>
+                                    <td class="text-end">
+                                        <button type="button" class="btn btn-sm btn-outline-primary details-btn"
+                                                data-bs-toggle="modal" data-bs-target="#resultModal{{ result.id }}">
+                                            <i class="bi bi-eye"></i> 详情
+                                        </button>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="8" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="bi bi-info-circle me-2"></i> 暂无测试结果
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {% include 'pagination.html' with page_obj=test_results %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Result Detail Modals Container -->
+    <div id="modalsContainer">
+        {% for result in test_results %}
+            <div class="modal fade" id="resultModal{{ result.id }}" tabindex="-1"
+                 aria-labelledby="resultModalLabel{{ result.id }}" aria-hidden="true">
+                <div class="modal-dialog modal-lg modal-dialog-scrollable">
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h5 class="modal-title" id="resultModalLabel{{ result.id }}">测试结果:
+                                 {{ result.test_case.name }}</h5>
+                            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                        </div>
+                        <div class="modal-body">
+                            <ul class="nav nav-tabs mb-3" id="resultTab{{ result.id }}" role="tablist">
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link active" id="overview-tab{{ result.id }}"
+                                            data-bs-toggle="tab"
+                                            data-bs-target="#overview{{ result.id }}" type="button" role="tab"
+                                            aria-controls="overview{{ result.id }}" aria-selected="true">全览
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="request-tab{{ result.id }}" data-bs-toggle="tab"
+                                            data-bs-target="#request{{ result.id }}" type="button" role="tab"
+                                            aria-controls="request{{ result.id }}" aria-selected="false">请求
+                                    </button>
+                                </li>
+                                <li class="nav-item" role="presentation">
+                                    <button class="nav-link" id="response-tab{{ result.id }}" data-bs-toggle="tab"
+                                            data-bs-target="#response{{ result.id }}" type="button" role="tab"
+                                            aria-controls="response{{ result.id }}" aria-selected="false">响应
+                                    </button>
+                                </li>
+                                {% if result.validators %}
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="validators-tab{{ result.id }}" data-bs-toggle="tab"
+                                                data-bs-target="#validators{{ result.id }}" type="button" role="tab"
+                                                aria-controls="validators{{ result.id }}" aria-selected="false">
+                                            断言
+                                        </button>
+                                    </li>
+                                {% endif %}
+                                {% if result.test_case.extract_params %}
+                                    <li class="nav-item" role="presentation">
+                                        <button class="nav-link" id="extracted-tab{{ result.id }}" data-bs-toggle="tab"
+                                                data-bs-target="#extracted{{ result.id }}" type="button" role="tab"
+                                                aria-controls="extracted{{ result.id }}" aria-selected="false">提取参数
+
+                                        </button>
+                                    </li>
+                                {% endif %}
+                            </ul>
+
+                            <div class="tab-content" id="resultTabContent{{ result.id }}">
+                                <div class="tab-pane fade show active" id="overview{{ result.id }}" role="tabpanel"
+                                     aria-labelledby="overview-tab{{ result.id }}">
+                                    <div class="mb-4">
+                                        <div class="row">
+                                            <div class="col-lg-12">
+                                                <table class="table">
+                                                    <tr>
+                                                        <th width="30%">状态:</th>
+                                                        <td>
+                                                            {% if result.status == 'passed' %}
+                                                                <span class="badge bg-success">Passed</span>
+                                                            {% elif result.status == 'failed' %}
+                                                                <span class="badge bg-danger">Failed</span>
+                                                            {% elif result.status == 'error' %}
+                                                                <span class="badge bg-warning">Error</span>
+                                                            {% else %}
+                                                                <span class="badge bg-secondary">Skipped</span>
+                                                            {% endif %}
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>请求方式:</th>
+                                                        <td>
+                                                          <span class="badge
+                                                              {% if result.test_case.request_method == 'GET' %}bg-success{% endif %}
+                                                              {% if result.test_case.request_method == 'POST' %}bg-primary{% endif %}
+                                                              {% if result.test_case.request_method == 'PUT' %}bg-warning{% endif %}
+                                                              {% if result.test_case.request_method == 'DELETE' %}bg-danger{% endif %}
+                                                              {% if result.test_case.request_method == 'PATCH' %}bg-info{% endif %}
+                                                          ">
+                                                              {{ result.test_case.request_method }}
+                                                          </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>URL:</th>
+                                                        <td>
+                                                            <code class="bg-light px-2 py-1 rounded">
+                                                                {{ result.test_case.request_url }}
+                                                            </code>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>环境:</th>
+                                                        <td>{{ result.environment.name }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th width="40%">响应时间:</th>
+                                                        <td>{{ result.response_time|floatformat:2 }} ms</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>响应状态码:</th>
+                                                        <td>
+                                                          <span class="badge {% if result.response_status_code == result.test_case.expected_status_code %}bg-success{% else %}bg-danger{% endif %}">
+                                                              {{ result.response_status_code }}
+                                                          </span>
+                                                        </td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>预期状态码:</th>
+                                                        <td>{{ result.test_case.expected_status_code }}</td>
+                                                    </tr>
+                                                    <tr>
+                                                        <th>创建时间:</th>
+                                                        <td>{{ result.created_at|date:"Y-m-d H:i" }}</td>
+                                                    </tr>
+                                                </table>
+                                            </div>
+                                        </div>
+
+                                        {% if result.error_message %}
+                                            <div class="alert alert-danger mt-3">
+                                                <h6 class="alert-heading">错误信息:</h6>
+                                                <pre class="mb-0">{{ result.error_message }}</pre>
+                                            </div>
+                                        {% endif %}
+                                    </div>
+                                </div>
+
+                              <div class="tab-pane fade" id="request{{ result.id }}" role="tabpanel"
+                                   aria-labelledby="request-tab{{ result.id }}">
+                                  <div class="mb-4">
+                                      <h6 class="text-muted mb-2">请求 URL</h6>
+                                      <div class="input-group mb-3">
+                                          <span class="input-group-text">{{ result.test_case.request_method }}</span>
+                                          <input type="text" class="form-control" value="{{ result.environment.base_url }}{{ result.test_case.request_url }}" readonly>
+                                      </div>
+
+                                        <h6 class="text-muted mb-2">请求头</h6>
+                                        <code class="bg-light p-3 rounded">{{ result.request_headers|pprint }}</code>
+
+                                      {% if result.request_body %}
+                                          <h6 class="text-muted mb-2">请求体</h6>
+                                          <pre class="bg-light p-3 rounded"><code>{{ result.request_body|pprint }}</code></pre>
+                                      {% endif %}
+                                  </div>
+                              </div>
+
+                                <div class="tab-pane fade" id="response{{ result.id }}" role="tabpanel"
+                                     aria-labelledby="response-tab{{ result.id }}">
+                                    <div class="mb-4">
+                                        <h6 class="text-muted mb-2">响应状态码</h6>
+                                        <p>
+                                          <span class="badge {% if result.response_status_code == result.test_case.expected_status_code %}bg-success{% else %}bg-danger{% endif %}">
+                                              {{ result.response_status_code }}
+                                          </span>
+                                            <span class="ms-2">响应时间: {{ result.response_time|floatformat:2 }} ms</span>
+                                        </p>
+
+                                        <h6 class="text-muted mb-2">响应头</h6>
+                                        <pre class="bg-light p-3 rounded"><code>{{ result.response_headers|pprint }}</code></pre>
+
+                                        <h6 class="text-muted mb-2">响应体</h6>
+                                        <pre class="bg-light p-3 rounded"><code>{{ result.response_body|pprint }}</code></pre>
+                                    </div>
+                                </div>
+
+                                {% if result.validators %}
+                                    <div class="tab-pane fade" id="validators{{ result.id }}" role="tabpanel"
+                                         aria-labelledby="validators-tab{{ result.id }}">
+                                        <div class="mb-4">
+                                            <h6 class="text-muted mb-2">断言</h6>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered">
+                                                    <thead class="table-light">
+                                                    <tr>
+                                                        <th>Check</th>
+                                                        <th>Comparator</th>
+                                                        <th>Expected</th>
+                                                        <th>Actual</th>
+                                                        <th>Result</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    {% for validator in result.validators %}
+                                                        <tr>
+                                                            <td><code>{{ validator.check }}</code></td>
+                                                            <td><code>{{ validator.comparator }}</code></td>
+                                                            <td><code>{{ validator.expect }}</code></td>
+                                                            <td><code>{{ validator.check_value }}</code></td>
+                                                            <td>
+                                                                {% if validator.check_result == "pass" %}
+                                                                    <span class="badge bg-success">Pass</span>
+                                                                {% else %}
+                                                                    <span class="badge bg-danger">Fail</span>
+                                                                {% endif %}
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+
+                                {% if result.test_case.extract_params %}
+                                    <div class="tab-pane fade" id="extracted{{ result.id }}" role="tabpanel"
+                                         aria-labelledby="extracted-tab{{ result.id }}">
+                                        <div class="mb-4">
+                                            <h6 class="text-muted mb-2">提取参数</h6>
+                                            <div class="table-responsive">
+                                                <table class="table table-sm table-bordered">
+                                                    <thead class="table-light">
+                                                    <tr>
+                                                        <th>参数名称</th>
+                                                        <th>提取表达式</th>
+                                                        <th>描述</th>
+                                                        <th>提取结果</th>
+                                                    </tr>
+                                                    </thead>
+                                                    <tbody>
+                                                    {% for item in result.test_case.extract_params %}
+                                                        <tr>
+                                                            <td><code>{{ item.name }}</code></td>
+                                                            <td><code>{{ item.path }}</code></td>
+                                                            <td>{{ item.description|default:"-" }}</td>
+                                                            <td>
+                                                                {% if result.extracted_params|get_item:item.name %}
+                                                                    <code>{{ result.extracted_params|get_item:item.name }}</code>
+                                                                {% else %}
+                                                                    <span class="text-muted">暂无提取结果</span>
+                                                                {% endif %}
+                                                            </td>
+                                                        </tr>
+                                                    {% empty %}
+                                                        <tr>
+                                                            <td colspan="4" class="text-center text-muted">暂无提取参数
+
+                                                            </td>
+                                                        </tr>
+                                                    {% endfor %}
+                                                    </tbody>
+                                                </table>
+                                            </div>
+                                        </div>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                        <div class="modal-footer">
+                            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">关闭</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+    </div>
+{% endblock %}
+
+{% block extra_js %}
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            // Auto-refresh for running test runs
+            {% if test_run.status == 'running' %}
+                const refreshInterval = setInterval(function () {
+                    window.location.reload();
+                }, 5000);
+
+                // Allow manual refresh
+                document.getElementById('refreshButton').addEventListener('click', function () {
+                    window.location.reload();
+                });
+            {% endif %}
+
+            // Highlight active filter button based on URL parameters
+            const urlParams = new URLSearchParams(window.location.search);
+            const status = urlParams.get('status');
+
+
+            // Fix for modal backdrop issues
+            const detailsButtons = document.querySelectorAll('.details-btn');
+            detailsButtons.forEach(button => {
+                button.addEventListener('click', function () {
+                    const modalId = this.getAttribute('data-bs-target');
+                    const modal = document.querySelector(modalId);
+
+                    // Ensure proper z-index for nested modals
+                    setTimeout(() => {
+                        const backdrop = document.querySelector('.modal-backdrop');
+                        if (backdrop) {
+                            backdrop.style.zIndex = '1040';
+                        }
+                        if (modal) {
+                            modal.style.zIndex = '1050';
+                        }
+                    }, 10);
+                });
+            });
+
+            // Clean up any lingering backdrops on page load
+            const existingBackdrops = document.querySelectorAll('.modal-backdrop');
+            existingBackdrops.forEach(backdrop => {
+                backdrop.remove();
+            });
+        });
+    </script>
+
+    <style>
+        /* Card styling */
+        .card {
+            transition: all 0.3s ease;
+            border-radius: 0.5rem;
+        }
+
+        .card:hover {
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15) !important;
+        }
+
+        .card-header {
+            border-top-left-radius: 0.5rem !important;
+            border-top-right-radius: 0.5rem !important;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.05);
+        }
+
+        /* Table styling */
+        .table {
+            vertical-align: middle;
+        }
+
+        .table thead th {
+            background-color: #f8f9fa;
+            border-bottom-width: 1px;
+        }
+
+        /* Button styling */
+        .btn {
+            border-radius: 0.25rem;
+            font-weight: 500;
+        }
+
+        .btn-sm {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        /* Badge styling */
+        .badge {
+            font-weight: 500;
+            padding: 0.35em 0.65em;
+        }
+
+        /* Modal styling */
+        .modal-content {
+            border: none;
+            border-radius: 0.5rem;
+            box-shadow: 0 0.5rem 1rem rgba(0, 0, 0, 0.15);
+        }
+
+        .modal-header {
+            border-top-left-radius: 0.5rem;
+            border-top-right-radius: 0.5rem;
+            background-color: #f8f9fa;
+        }
+
+        .modal-footer {
+            border-bottom-left-radius: 0.5rem;
+            border-bottom-right-radius: 0.5rem;
+            background-color: #f8f9fa;
+        }
+
+        /* Code and pre styling */
+        pre {
+            margin-bottom: 0;
+            white-space: pre-wrap;
+        }
+
+        code {
+            font-family: SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+            font-size: 0.875em;
+        }
+
+        /* Tab styling */
+        .nav-tabs .nav-link {
+            border: none;
+            color: #6c757d;
+            padding: 0.5rem 1rem;
+            font-weight: 500;
+            transition: all 0.2s ease;
+        }
+
+        .nav-tabs .nav-link:hover {
+            color: #495057;
+            background-color: #f8f9fa;
+            border-color: transparent;
+        }
+
+        .nav-tabs .nav-link.active {
+            color: #0d6efd;
+            background-color: transparent;
+            border-bottom: 2px solid #0d6efd;
+        }
+
+        /* Fix for modal issues */
+        .modal-open {
+            overflow: hidden;
+            padding-right: 0 !important;
+        }
+
+        .modal {
+            padding-right: 0 !important;
+        }
+
+        /* Ensure modals are on top */
+        .modal {
+            z-index: 1050;
+        }
+
+        .modal-backdrop {
+            z-index: 1040;
+        }
+
+        /* Fix for scrollbar jump */
+        html {
+            overflow-y: scroll;
+        }
+
+        /* Ensure content doesn't shift when modal opens */
+        body.modal-open {
+            width: 100%;
+        }
+
+        /* Fix for multiple backdrops */
+        .modal-backdrop + .modal-backdrop {
+            display: none;
+        }
+
+        /* Pagination styles */
+        .pagination {
+            margin-bottom: 0;
+        }
+
+        .pagination .page-link {
+            color: var(--primary-color);
+            border-color: #dee2e6;
+        }
+
+        .pagination .page-item.active .page-link {
+            background-color: var(--primary-color);
+            border-color: var(--primary-color);
+            color: white;
+        }
+
+        .pagination .page-item.disabled .page-link {
+            color: #6c757d;
+        }
+    </style>
+{% endblock %}

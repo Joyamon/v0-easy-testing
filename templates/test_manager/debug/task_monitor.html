@@ -1,0 +1,230 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}定时任务监控{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>定时任务监控</h2>
+                <div>
+                    <button class="btn btn-primary" onclick="refreshStatus()">刷新状态</button>
+                    <button class="btn btn-warning" onclick="syncTasks()">同步任务</button>
+                    <button class="btn btn-danger" onclick="cleanupTasks()">清理孤立任务</button>
+                </div>
+            </div>
+
+            <!-- 状态概览 -->
+            <div class="row mb-4">
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">数据库任务</h5>
+                            <h3 class="text-primary" id="db-tasks-count">-</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Celery任务</h5>
+                            <h3 class="text-success" id="celery-tasks-count">-</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">Beat状态</h5>
+                            <h3 id="beat-status">-</h3>
+                        </div>
+                    </div>
+                </div>
+                <div class="col-md-3">
+                    <div class="card">
+                        <div class="card-body">
+                            <h5 class="card-title">活动Worker</h5>
+                            <h3 class="text-info" id="active-workers">-</h3>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 任务列表 -->
+            <div class="card">
+                <div class="card-header">
+                    <h5>任务详情</h5>
+                </div>
+                <div class="card-body">
+                    <div class="table-responsive">
+                        <table class="table table-striped">
+                            <thead>
+                                <tr>
+                                    <th>任务名称</th>
+                                    <th>调度类型</th>
+                                    <th>下次执行</th>
+                                    <th>Celery状态</th>
+                                    <th>最后执行</th>
+                                    <th>成功率</th>
+                                    <th>操作</th>
+                                </tr>
+                            </thead>
+                            <tbody id="tasks-table">
+                                <tr>
+                                    <td colspan="7" class="text-center">加载中...</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 日志输出 -->
+            <div class="card mt-4">
+                <div class="card-header">
+                    <h5>操作日志</h5>
+                    <button class="btn btn-sm btn-secondary float-end" onclick="clearLogs()">清空日志</button>
+                </div>
+                <div class="card-body">
+                    <pre id="logs" style="height: 300px; overflow-y: auto; background-color: #f8f9fa; padding: 10px;"></pre>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function addLog(message) {
+    const logs = document.getElementById('logs');
+    const timestamp = new Date().toLocaleString();
+    logs.textContent += `[${timestamp}] ${message}\n`;
+    logs.scrollTop = logs.scrollHeight;
+}
+
+function clearLogs() {
+    document.getElementById('logs').textContent = '';
+}
+
+function refreshStatus() {
+    addLog('刷新状态...');
+    fetch('/debug/task-monitor-api/')
+        .then(response => response.json())
+        .then(data => {
+            updateStatus(data);
+            addLog('状态刷新完成');
+        })
+        .catch(error => {
+            addLog(`刷新失败: ${error}`);
+        });
+}
+
+function updateStatus(data) {
+    document.getElementById('db-tasks-count').textContent = data.db_tasks_count;
+    document.getElementById('celery-tasks-count').textContent = data.celery_tasks_count;
+    
+    const beatStatus = document.getElementById('beat-status');
+    beatStatus.textContent = data.beat_status.status;
+    beatStatus.className = data.beat_status.status === 'ok' ? 'text-success' : 'text-danger';
+    
+    document.getElementById('active-workers').textContent = data.beat_status.active_workers?.length || 0;
+    
+    // 更新任务表格
+    const tbody = document.getElementById('tasks-table');
+    tbody.innerHTML = '';
+    
+    if (data.tasks.length === 0) {
+        tbody.innerHTML = '<tr><td colspan="7" class="text-center">暂无任务</td></tr>';
+        return;
+    }
+    
+    data.tasks.forEach(task => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${task.name}</td>
+            <td>${task.schedule_type_display}</td>
+            <td>${task.next_run_time || '未设置'}</td>
+            <td>
+                <span class="badge ${task.celery_synced ? 'bg-success' : 'bg-warning'}">
+                    ${task.celery_synced ? '已同步' : '未同步'}
+                </span>
+            </td>
+            <td>${task.last_run_time || '从未执行'}</td>
+            <td>${task.success_rate}%</td>
+            <td>
+                <button class="btn btn-sm btn-primary" onclick="runTaskNow(${task.id})">立即执行</button>
+                <button class="btn btn-sm btn-secondary" onclick="syncTask(${task.id})">重新同步</button>
+            </td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function syncTasks() {
+    addLog('开始同步所有任务...');
+    fetch('/debug/sync-tasks/', {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            addLog(`同步完成: ${data.message}`);
+            refreshStatus();
+        })
+        .catch(error => {
+            addLog(`同步失败: ${error}`);
+        });
+}
+
+function cleanupTasks() {
+    addLog('开始清理孤立任务...');
+    fetch('/debug/cleanup-tasks/', {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            addLog(`清理完成: ${data.message}`);
+            refreshStatus();
+        })
+        .catch(error => {
+            addLog(`清理失败: ${error}`);
+        });
+}
+
+function runTaskNow(taskId) {
+    addLog(`立即执行任务 ${taskId}...`);
+    fetch(`/scheduled-tasks/${taskId}/run-now/`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('[name=csrfmiddlewaretoken]').value
+        }
+    })
+        .then(response => response.json())
+        .then(data => {
+            addLog(`任务执行: ${data.message}`);
+        })
+        .catch(error => {
+            addLog(`执行失败: ${error}`);
+        });
+}
+
+function syncTask(taskId) {
+    addLog(`重新同步任务 ${taskId}...`);
+    fetch(`/debug/sync-task/${taskId}/`, {method: 'POST'})
+        .then(response => response.json())
+        .then(data => {
+            addLog(`同步结果: ${data.message}`);
+            refreshStatus();
+        })
+        .catch(error => {
+            addLog(`同步失败: ${error}`);
+        });
+}
+
+// 页面加载时自动刷新状态
+document.addEventListener('DOMContentLoaded', function() {
+    refreshStatus();
+    
+    // 每30秒自动刷新一次
+    setInterval(refreshStatus, 30000);
+});
+</script>
+
+{% csrf_token %}
+{% endblock %}

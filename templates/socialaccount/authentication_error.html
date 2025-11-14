@@ -1,0 +1,34 @@
+{% extends 'base_auth.html' %}
+
+{% block title %}登录错误 - EasyTesting{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row justify-content-center">
+        <div class="col-md-6 col-lg-5">
+            <div class="card shadow-sm border-0 mt-5">
+                <div class="card-body p-5 text-center">
+                    <i class="bi bi-exclamation-triangle-fill text-warning display-1 mb-4"></i>
+                    <h2 class="mb-3">社交账户登录失败</h2>
+                    <p class="text-muted mb-4">
+                        在尝试使用社交账户登录时发生错误。这可能是由于以下原因：
+                    </p>
+                    <ul class="text-start text-muted mb-4">
+                        <li>您拒绝了授权请求</li>
+                        <li>社交账户提供商暂时不可用</li>
+                        <li>您的账户信息不完整或无法访问</li>
+                    </ul>
+                    <div class="d-grid gap-2">
+                        <a href="{% url 'login' %}" class="btn btn-primary">
+                            <i class="bi bi-arrow-left me-2"></i>返回登录页面
+                        </a>
+                        <a href="{% url 'dashboard' %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-house me-2"></i>返回首页
+                        </a>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

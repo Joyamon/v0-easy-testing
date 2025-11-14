@@ -1,0 +1,1692 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ title }} - EasyTesting{% endblock %}
+
+{% block header %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="row justify-content-center">
+    <div class="col-md-10">
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="post">
+                    {% csrf_token %}
+
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <label for="{{ form.name.id_for_label }}" class="form-label fw-medium">测试用例名称</label>
+                            {{ form.name.errors }}
+                            <input type="text" class="form-control form-control-lg" id="{{ form.name.id_for_label }}" name="{{ form.name.html_name }}" value="{{ form.name.value|default:'' }}" required placeholder="输入测试用例名称">
+                            <div class="form-text">测试用例名称</div>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.project.id_for_label }}" class="form-label fw-medium">项目</label>
+                            {{ form.project.errors }}
+                            {% if form.project.field.widget.input_type == 'hidden' %}
+                                {{ form.project }}
+                                <input type="text" class="form-control form-control-lg" value="{{ form.project.value|default:''|stringformat:'s' }}" disabled>
+                            {% else %}
+                                <select class="form-select form-select-lg" id="{{ form.project.id_for_label }}" name="{{ form.project.html_name }}" required>
+                                    {% for choice in form.project.field.choices %}
+                                        <option value="{{ choice.0 }}" {% if form.project.value|stringformat:"s" == choice.0|stringformat:"s" %}selected{% endif %}>{{ choice.1 }}</option>
+                                    {% endfor %}
+                                </select>
+                            {% endif %}
+                            <div class="form-text">选择测试用例关联的项目</div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.group.id_for_label }}" class="form-label fw-medium">分组</label>
+                        {{ form.group.errors }}
+                        <select class="form-select" id="{{ form.group.id_for_label }}" name="{{ form.group.html_name }}">
+                            <option value="">暂无分组</option>
+                            {% for choice in form.group.field.choices %}
+                                {% if choice.0 %}
+                                    <option value="{{ choice.0 }}" {% if form.group.value|stringformat:"s" == choice.0|stringformat:"s" %}selected{% endif %}>{{ choice.1 }}</option>
+                                {% endif %}
+                            {% endfor %}
+                        </select>
+                        <div class="form-text">选择测试用例的分组 (可选)</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label for="{{ form.description.id_for_label }}" class="form-label fw-medium">描述</label>
+                        {{ form.description.errors }}
+                        <textarea class="form-control" id="{{ form.description.id_for_label }}" name="{{ form.description.html_name }}" rows="3" placeholder="描述测试用例...">{{ form.description.value|default:'' }}</textarea>
+                        <div class="form-text">描述测试用例</div>
+                    </div>
+
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <label for="{{ form.request_method.id_for_label }}" class="form-label fw-medium">请求方式</label>
+                            {{ form.request_method.errors }}
+                            <select class="form-select" id="{{ form.request_method.id_for_label }}" name="{{ form.request_method.html_name }}" required>
+                                {% for choice in form.request_method.field.choices %}
+                                    <option value="{{ choice.0 }}" {% if form.request_method.value == choice.0 %}selected{% endif %}>{{ choice.0 }}</option>
+                                {% endfor %}
+                            </select>
+                        </div>
+
+                        <div class="col-md-6">
+                            <label for="{{ form.request_url.id_for_label }}" class="form-label fw-medium">请求 URL</label>
+                            {{ form.request_url.errors }}
+                            <input type="text" class="form-control" id="{{ form.request_url.id_for_label }}" name="{{ form.request_url.html_name }}" value="{{ form.request_url.value|default:'' }}" required placeholder="/api/endpoint">
+                            <div class="form-text">url路径</div>
+                        </div>
+
+                        <div class="col-md-3">
+                            <label for="{{ form.expected_status_code.id_for_label }}" class="form-label fw-medium">预期状态码</label>
+                            {{ form.expected_status_code.errors }}
+                            <input type="number" class="form-control" id="{{ form.expected_status_code.id_for_label }}" name="{{ form.expected_status_code.html_name }}" value="{{ form.expected_status_code.value|default:'200' }}" required>
+                        </div>
+                    </div>
+
+                    <!-- 添加URL参数表格 -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-medium mb-0">请求参数</label>
+                            <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-params-table">
+                                <i class="bi bi-chevron-down" id="toggle-params-icon"></i>
+                            </button>
+                        </div>
+
+                        <div id="params-table-container">
+                            <div class="card">
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered params-table mb-0">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th style="width: 40px;" class="text-center">
+                                                        <input type="checkbox" class="form-check-input" id="select-all-url-params" checked>
+                                                    </th>
+                                                    <th style="width: 30%;">Key</th>
+                                                    <th>Value</th>
+                                                    <th style="width: 30%;">Description</th>
+                                                    <th style="width: 40px;" class="text-center">
+                                                        <button type="button" class="btn btn-sm btn-link p-0" id="bulk-edit-params-btn" title="Bulk Edit">
+                                                            <i class="bi bi-pencil-square"></i>
+                                                        </button>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="url-params-container">
+                                                <!-- 参数行将通过JavaScript动态添加 -->
+                                            </tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <td colspan="5">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="add-url-param-btn">
+                                                            <i class="bi bi-plus-lg"></i> Add Parameter
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-medium mb-0">请求头</label>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="headers-preset-btn">
+                                    Presets <i class="bi bi-chevron-down"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="bulk-edit-headers-btn">
+                                    Bulk Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-headers-table">
+                                    <i class="bi bi-chevron-down" id="toggle-headers-icon"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="headers-table-container">
+                            <div class="card">
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered headers-table mb-0">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th style="width: 40px;" class="text-center">
+                                                        <input type="checkbox" class="form-check-input" id="select-all-headers" checked>
+                                                    </th>
+                                                    <th style="width: 30%;">Key</th>
+                                                    <th>Value</th>
+                                                    <th style="width: 30%;">Description</th>
+                                                    <th style="width: 40px;" class="text-center">
+                                                        <button type="button" class="btn btn-sm btn-link p-0" id="bulk-edit-headers-btn-2" title="Bulk Edit">
+                                                            <i class="bi bi-pencil-square"></i>
+                                                        </button>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="headers-container">
+                                                <!-- 头部行将通过JavaScript动态添加 -->
+                                            </tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <td colspan="5">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="add-header-btn">
+                                                            <i class="bi bi-plus-lg"></i> Add Header
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 隐藏的原始文本区域，用于表单提交 -->
+                        {{ form.request_headers_json.errors }}
+                        <textarea class="form-control d-none" id="{{ form.request_headers_json.id_for_label }}" name="{{ form.request_headers_json.html_name }}">{{ form.request_headers_json.value|default:"" }}</textarea>
+                        <div class="form-text mt-2">输入JSON格式的请求头, 例如 {"Content-Type": "application/json"}</div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label fw-medium">请求体格式</label>
+                        {{ form.request_body_format.errors }}
+                        <div class="d-flex">
+                            <div class="form-check me-4">
+                                <input class="form-check-input" type="radio" name="{{ form.request_body_format.html_name }}" id="format_json" value="json" {% if form.request_body_format.value == 'json' or not form.request_body_format.value %}checked{% endif %} onchange="toggleBodyFormat()">
+                                <label class="form-check-label" for="format_json">
+                                    JSON
+                                </label>
+                            </div>
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="{{ form.request_body_format.html_name }}" id="format_form_data" value="form-data" {% if form.request_body_format.value == 'form-data' %}checked{% endif %} onchange="toggleBodyFormat()">
+                                <label class="form-check-label" for="format_form_data">
+                                    Form Data
+                                </label>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div id="json_body_container" class="mb-4" {% if form.request_body_format.value == 'form-data' %}style="display: none;"{% endif %}>
+                        <label for="{{ form.request_body_json.id_for_label }}" class="form-label fw-medium">请求体 (JSON)</label>
+                        {{ form.request_body_json.errors }}
+                        <textarea class="form-control font-monospace" id="{{ form.request_body_json.id_for_label }}" name="{{ form.request_body_json.html_name }}" rows="6" placeholder='{"name": "Test User", "email": "test@example.com"}'>{{ form.request_body_json.value|default:"" }}</textarea>
+                        <div class="form-text">{{ form.request_body_json.help_text }}</div>
+                    </div>
+
+                    <div id="form_data_container" class="mb-4" {% if form.request_body_format.value != 'form-data' %}style="display: none;"{% endif %}>
+                        <label class="form-label fw-medium">请求体 (Form Data)</label>
+                        {{ form.request_body_form_data.errors }}
+
+                        <div class="card">
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="table table-bordered form-data-table mb-0">
+                                        <thead class="bg-light">
+                                            <tr>
+                                                <th style="width: 40px;" class="text-center">
+                                                    <input type="checkbox" class="form-check-input" id="select-all-params" checked>
+                                                </th>
+                                                <th style="width: 30%;">Key</th>
+                                                <th style="width: 15%;">Type</th>
+                                                <th>Value</th>
+                                                <th style="width: 20%;">Description</th>
+                                                <th style="width: 40px;" class="text-center">
+                                                    <button type="button" class="btn btn-sm btn-link p-0" id="bulk-edit-btn" title="Bulk Edit">
+                                                        <i class="bi bi-pencil-square"></i>
+                                                    </button>
+                                                </th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="form-data-params">
+                                            <!-- 参数行将通过JavaScript动态添加 -->
+                                        </tbody>
+                                        <tfoot>
+                                            <tr>
+                                                <td colspan="6">
+                                                    <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="add-param-btn">
+                                                        <i class="bi bi-plus-lg"></i> Add Parameter
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 隐藏的原始文本区域，用于表单提交 -->
+                        <textarea class="form-control d-none" id="{{ form.request_body_form_data.id_for_label }}" name="{{ form.request_body_form_data.html_name }}">{{ form.request_body_form_data.value|default:"" }}</textarea>
+                        <div class="form-text mt-2">输入form-data格式的数据，每行一个参数，格式为key=value 例如, key=value)</div>
+                    </div>
+
+                    <!-- 添加提取参数表格 -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-medium mb-0">提取参数</label>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="extract-preset-btn">
+                                    Presets <i class="bi bi-chevron-down"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="bulk-edit-extract-btn">
+                                    Bulk Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-extract-table">
+                                    <i class="bi bi-chevron-down" id="toggle-extract-icon"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="extract-table-container">
+                            <div class="card">
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered extract-table mb-0">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th style="width: 40px;" class="text-center">
+                                                        <input type="checkbox" class="form-check-input" id="select-all-extract" checked>
+                                                    </th>
+                                                    <th style="width: 25%;">Name</th>
+                                                    <th style="width: 35%;">Path</th>
+                                                    <th>Description</th>
+                                                    <th style="width: 40px;" class="text-center">
+                                                        <button type="button" class="btn btn-sm btn-link p-0" id="bulk-edit-extract-btn-2" title="Bulk Edit">
+                                                            <i class="bi bi-pencil-square"></i>
+                                                        </button>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="extract-container">
+                                                <!-- 提取参数行将通过JavaScript动态添加 -->
+                                            </tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <td colspan="5">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="add-extract-btn">
+                                                            <i class="bi bi-plus-lg"></i> Add Extract Parameter
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 隐藏的原始文本区域，用于表单提交 -->
+                        {{ form.extract_params_json.errors }}
+                        <textarea class="form-control d-none" id="{{ form.extract_params_json.id_for_label }}" name="{{ form.extract_params_json.html_name }}">{{ form.extract_params_json.value|default:"" }}</textarea>
+                        <div class="form-text mt-2">输入json格式的提取参数，, 例如, [{"name": "token", "path": "$.data.token"}]</div>
+                    </div>
+
+                    <!-- 验证规则表格 -->
+                    <div class="mb-4">
+                        <div class="d-flex justify-content-between align-items-center mb-2">
+                            <label class="form-label fw-medium mb-0">断言</label>
+                            <div>
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="validation-preset-btn">
+                                    Presets <i class="bi bi-chevron-down"></i>
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary me-2" id="bulk-edit-validation-btn">
+                                    Bulk Edit
+                                </button>
+                                <button type="button" class="btn btn-sm btn-outline-secondary" id="toggle-validation-table">
+                                    <i class="bi bi-chevron-down" id="toggle-validation-icon"></i>
+                                </button>
+                            </div>
+                        </div>
+
+                        <div id="validation-table-container">
+                            <div class="card">
+                                <div class="card-body p-0">
+                                    <div class="table-responsive">
+                                        <table class="table table-bordered validation-table mb-0">
+                                            <thead class="bg-light">
+                                                <tr>
+                                                    <th style="width: 40px;" class="text-center">
+                                                        <input type="checkbox" class="form-check-input" id="select-all-validation" checked>
+                                                    </th>
+                                                    <th style="width: 20%;">Validator</th>
+                                                    <th style="width: 30%;">Path/Expected</th>
+                                                    <th style="width: 30%;">Value</th>
+                                                    <th>Description</th>
+                                                    <th style="width: 40px;" class="text-center">
+                                                        <button type="button" class="btn btn-sm btn-link p-0" id="bulk-edit-validation-btn-2" title="Bulk Edit">
+                                                            <i class="bi bi-pencil-square"></i>
+                                                        </button>
+                                                    </th>
+                                                </tr>
+                                            </thead>
+                                            <tbody id="validation-container">
+                                                <!-- 验证规则行将通过JavaScript动态添加 -->
+                                            </tbody>
+                                            <tfoot>
+                                                <tr>
+                                                    <td colspan="6">
+                                                        <button type="button" class="btn btn-sm btn-outline-secondary w-100" id="add-validation-btn">
+                                                            <i class="bi bi-plus-lg"></i> Add Validation Rule
+                                                        </button>
+                                                    </td>
+                                                </tr>
+                                            </tfoot>
+                                        </table>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 隐藏的原始文本区域，用于表单提交 -->
+                        {{ form.validation_rules_json.errors }}
+                        <textarea class="form-control d-none" id="{{ form.validation_rules_json.id_for_label }}" name="{{ form.validation_rules_json.html_name }}">{{ form.validation_rules_json.value|default:"" }}</textarea>
+                        <div class="form-text mt-2">输入json格式的验证规则, 例如, [{"eq": ["$.data.id", 1]}]</div>
+                    </div>
+
+                    <div class="d-flex justify-content-between mt-4">
+                        <a href="{% if request.GET.project %}{% url 'project_detail' pk=request.GET.project %}{% else %}{% url 'test_case_list' %}{% endif %}" class="btn btn-outline-secondary">
+                            <i class="bi bi-arrow-left"></i> 取消
+                        </a>
+                        <button type="submit" class="btn btn-primary px-4">
+                            <i class="bi bi-check-lg"></i> 保存
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    // URL参数表格与Request URL联动
+    function initUrlParamsTable() {
+        const urlInput = document.getElementById('{{ form.request_url.id_for_label }}');
+        const paramsContainer = document.getElementById('url-params-container');
+        const addParamBtn = document.getElementById('add-url-param-btn');
+        const selectAllCheckbox = document.getElementById('select-all-url-params');
+        const toggleParamsBtn = document.getElementById('toggle-params-table');
+        const toggleParamsIcon = document.getElementById('toggle-params-icon');
+        const paramsTableContainer = document.getElementById('params-table-container');
+
+        let isUpdatingUrl = false; // 防止循环更
+
+        // 解析URL中的查询参数
+        function parseUrlParams(url) {
+            const params = [];
+            if (!url) return params;
+
+            // 提取查询字符串部分
+            const queryStringMatch = url.match(/\?([^#]*)/);
+            if (!queryStringMatch) return params;
+
+            const queryString = queryStringMatch[1];
+            const searchParams = new URLSearchParams(queryString);
+
+            searchParams.forEach((value, key) => {
+                params.push({
+                    key: key,
+                    value: value,
+                    description: ''
+                });
+            });
+
+            return params;
+        }
+
+        // 从URL参数表格构建查询字符串
+        function buildQueryString() {
+            const rows = paramsContainer.querySelectorAll('tr');
+            const searchParams = new URLSearchParams();
+
+            rows.forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    const keyInput = row.querySelector('.param-key');
+                    const valueInput = row.querySelector('.param-value');
+
+                    if (keyInput && valueInput && keyInput.value.trim()) {
+                        searchParams.append(keyInput.value.trim(), valueInput.value.trim());
+                    }
+                }
+            });
+
+            return searchParams.toString();
+        }
+
+        // 更新URL输入框
+        function updateUrlInput() {
+            if (isUpdatingUrl) return;
+            isUpdatingUrl = true;
+
+            try {
+                let url = urlInput.value || '';
+                const queryString = buildQueryString();
+
+                // 移除现有的查询字符串
+                url = url.replace(/\?[^#]*/, '');
+
+                // 添加新的查询字符串（如果有）
+                if (queryString) {
+                    url = `${url}?${queryString}`;
+                }
+
+                urlInput.value = url;
+            } finally {
+                isUpdatingUrl = false;
+            }
+        }
+
+        // 添加参数行
+        function addParamRow(param = { key: '', value: '', description: '' }) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="text-center align-middle">
+                    <input type="checkbox" class="form-check-input url-param-checkbox" checked>
+                </td>
+                <td>
+                    <input type="text" class="form-control param-key" value="${param.key}" placeholder="Key">
+                </td>
+                <td>
+                    <input type="text" class="form-control param-value" value="${param.value}" placeholder="Value">
+                </td>
+                <td>
+                    <input type="text" class="form-control param-description" value="${param.description}" placeholder="Description">
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 delete-param-btn">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+
+            // 添加事件监听器
+            const keyInput = row.querySelector('.param-key');
+            const valueInput = row.querySelector('.param-value');
+            const checkbox = row.querySelector('.url-param-checkbox');
+            const deleteBtn = row.querySelector('.delete-param-btn');
+
+            keyInput.addEventListener('input', updateUrlInput);
+            valueInput.addEventListener('input', updateUrlInput);
+            checkbox.addEventListener('change', updateUrlInput);
+
+            deleteBtn.addEventListener('click', () => {
+                row.remove();
+                updateUrlInput();
+            });
+
+            paramsContainer.appendChild(row);
+        }
+
+        // 从URL更新参数表格
+        function updateParamsTable() {
+            if (isUpdatingUrl) return;
+
+            // 清空现有行
+            paramsContainer.innerHTML = '';
+
+            // 解析URL并添加参数行
+            const params = parseUrlParams(urlInput.value);
+            if (params.length > 0) {
+                params.forEach(param => addParamRow(param));
+            } else {
+                // 如果没有参数，添加一个空行
+                addParamRow();
+            }
+        }
+
+        // 初始化表格
+        updateParamsTable();
+
+        // 监听URL输入变化
+        urlInput.addEventListener('input', () => {
+            if (!isUpdatingUrl) {
+                updateParamsTable();
+            }
+        });
+
+        // 添加参数按钮
+        addParamBtn.addEventListener('click', () => {
+            addParamRow();
+            updateUrlInput();
+        });
+
+        // 全选/取消全选
+        selectAllCheckbox.addEventListener('change', () => {
+            const checkboxes = paramsContainer.querySelectorAll('.url-param-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateUrlInput();
+        });
+
+        // 批量编辑按钮
+        document.getElementById('bulk-edit-params-btn').addEventListener('click', () => {
+            alert('批量编辑功能将在未来版本中实现');
+        });
+
+        // 切换参数表格显示/隐藏
+        toggleParamsBtn.addEventListener('click', () => {
+            if (paramsTableContainer.style.display === 'none') {
+                paramsTableContainer.style.display = 'block';
+                toggleParamsIcon.classList.remove('bi-chevron-up');
+                toggleParamsIcon.classList.add('bi-chevron-down');
+            } else {
+                paramsTableContainer.style.display = 'none';
+                toggleParamsIcon.classList.remove('bi-chevron-down');
+                toggleParamsIcon.classList.add('bi-chevron-up');
+            }
+        });
+    }
+
+    // 处理表格式的请求头界面
+    function initHeadersTable() {
+        const textarea = document.getElementById('{{ form.request_headers_json.id_for_label }}');
+        const headersContainer = document.getElementById('headers-container');
+        const addHeaderBtn = document.getElementById('add-header-btn');
+        const selectAllCheckbox = document.getElementById('select-all-headers');
+        const toggleHeadersBtn = document.getElementById('toggle-headers-table');
+        const toggleHeadersIcon = document.getElementById('toggle-headers-icon');
+        const headersTableContainer = document.getElementById('headers-table-container');
+        const bulkEditBtn = document.getElementById('bulk-edit-headers-btn');
+        const bulkEditBtn2 = document.getElementById('bulk-edit-headers-btn-2');
+        const headersPresetBtn = document.getElementById('headers-preset-btn');
+
+        // 常用请求头预设
+        const headerPresets = {
+            'JSON': {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+            },
+            'Form Data': {
+                'Content-Type': 'application/x-www-form-urlencoded'
+            },
+            'Multipart': {
+                'Content-Type': 'multipart/form-data'
+            },
+            'XML': {
+                'Content-Type': 'application/xml',
+                'Accept': 'application/xml'
+            },
+            'Authorization': {
+                'Authorization': 'Bearer ${token}'
+            }
+        };
+
+        // 从JSON文本区域解析请求头
+        function parseHeaders() {
+            const headers = [];
+            if (textarea.value) {
+                try {
+                    const headersObj = JSON.parse(textarea.value);
+                    for (const [key, value] of Object.entries(headersObj)) {
+                        headers.push({
+                            key: key,
+                            value: value,
+                            description: ''
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error parsing headers JSON:', e);
+                }
+            }
+
+            // 确保至少有一个空行
+            if (headers.length === 0) {
+                headers.push({
+                    key: '',
+                    value: '',
+                    description: ''
+                });
+            }
+
+            return headers;
+        }
+
+        // 更新JSON文本区域的值
+        function updateHeadersTextarea() {
+            const rows = headersContainer.querySelectorAll('tr');
+            const headers = {};
+
+            rows.forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    const keyInput = row.querySelector('.header-key');
+                    const valueInput = row.querySelector('.header-value');
+
+                    if (keyInput && valueInput && keyInput.value.trim()) {
+                        headers[keyInput.value.trim()] = valueInput.value.trim();
+                    }
+                }
+            });
+
+            textarea.value = JSON.stringify(headers, null, 2);
+        }
+
+        // 添加请求头行
+        function addHeaderRow(header = { key: '', value: '', description: '' }) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="text-center align-middle">
+                    <input type="checkbox" class="form-check-input header-checkbox" checked>
+                </td>
+                <td>
+                    <input type="text" class="form-control header-key" value="${header.key}" placeholder="Key">
+                </td>
+                <td>
+                    <input type="text" class="form-control header-value" value="${header.value}" placeholder="Value">
+                </td>
+                <td>
+                    <input type="text" class="form-control header-description" value="${header.description}" placeholder="Description">
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 delete-header-btn">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+
+            // 添加事件监听器
+            const keyInput = row.querySelector('.header-key');
+            const valueInput = row.querySelector('.header-value');
+            const checkbox = row.querySelector('.header-checkbox');
+            const deleteBtn = row.querySelector('.delete-header-btn');
+
+            keyInput.addEventListener('input', updateHeadersTextarea);
+            valueInput.addEventListener('input', updateHeadersTextarea);
+            checkbox.addEventListener('change', updateHeadersTextarea);
+
+            // 添加常用请求头自动完成功能
+            keyInput.addEventListener('input', function() {
+                const commonHeaders = [
+                    'Accept', 'Accept-Charset', 'Accept-Encoding', 'Accept-Language',
+                    'Authorization', 'Cache-Control', 'Connection', 'Content-Length',
+                    'Content-Type', 'Cookie', 'Host', 'Origin', 'Referer',
+                    'User-Agent', 'X-Requested-With'
+                ];
+
+                const value = this.value.trim().toLowerCase();
+                if (value) {
+                    const match = commonHeaders.find(h => h.toLowerCase().startsWith(value));
+                    if (match && match.toLowerCase() !== value) {
+                        this.value = match;
+                        // 选择补全的部分
+                        const startPos = value.length;
+                        const endPos = match.length;
+                        setTimeout(() => {
+                            this.setSelectionRange(startPos, endPos);
+                        }, 0);
+                    }
+                }
+            });
+
+            deleteBtn.addEventListener('click', () => {
+                row.remove();
+                updateHeadersTextarea();
+            });
+
+            headersContainer.appendChild(row);
+        }
+
+        // 初始化表格
+        const headers = parseHeaders();
+        headers.forEach(header => addHeaderRow(header));
+
+        // 添加请求头按钮
+        addHeaderBtn.addEventListener('click', () => {
+            addHeaderRow();
+            updateHeadersTextarea();
+        });
+
+        // 全选/取消全选
+        selectAllCheckbox.addEventListener('change', () => {
+            const checkboxes = headersContainer.querySelectorAll('.header-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateHeadersTextarea();
+        });
+
+        // 批量编辑按钮
+        bulkEditBtn.addEventListener('click', showBulkEditModal);
+        bulkEditBtn2.addEventListener('click', showBulkEditModal);
+
+        function showBulkEditModal() {
+            // 显示一个模态对话框，允许批量编辑
+            alert('批量编辑功能将在未来版本中实现');
+        }
+
+        // 切换请求头表格显示/隐藏
+        toggleHeadersBtn.addEventListener('click', () => {
+            if (headersTableContainer.style.display === 'none') {
+                headersTableContainer.style.display = 'block';
+                toggleHeadersIcon.classList.remove('bi-chevron-up');
+                toggleHeadersIcon.classList.add('bi-chevron-down');
+            } else {
+                headersTableContainer.style.display = 'none';
+                toggleHeadersIcon.classList.remove('bi-chevron-down');
+                toggleHeadersIcon.classList.add('bi-chevron-up');
+            }
+        });
+
+        // 预设按钮
+        headersPresetBtn.addEventListener('click', () => {
+            // 创建预设菜单
+            const menu = document.createElement('div');
+            menu.className = 'dropdown-menu show';
+            menu.style.position = 'absolute';
+            menu.style.transform = 'translate3d(0px, 40px, 0px)';
+            menu.style.top = '0px';
+            menu.style.left = '0px';
+            menu.style.willChange = 'transform';
+
+            // 添加预设选项
+            for (const [name, headers] of Object.entries(headerPresets)) {
+                const item = document.createElement('a');
+                item.className = 'dropdown-item';
+                item.href = '#';
+                item.textContent = name;
+
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+
+                    // 应用预设
+                    headersContainer.innerHTML = '';
+                    for (const [key, value] of Object.entries(headers)) {
+                        addHeaderRow({ key, value, description: '' });
+                    }
+                    updateHeadersTextarea();
+
+                    // 移除菜单
+                    document.body.removeChild(menu);
+                });
+
+                menu.appendChild(item);
+            }
+
+            // 添加自定义选项
+            const customItem = document.createElement('div');
+            customItem.className = 'dropdown-divider';
+            menu.appendChild(customItem);
+
+            const saveItem = document.createElement('a');
+            saveItem.className = 'dropdown-item';
+            saveItem.href = '#';
+            saveItem.textContent = 'Save Current as Preset...';
+            saveItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('保存预设功能将在未来版本中实现');
+                document.body.removeChild(menu);
+            });
+            menu.appendChild(saveItem);
+
+            // 定位并显示菜单
+            const rect = headersPresetBtn.getBoundingClientRect();
+            menu.style.top = `${rect.bottom}px`;
+            menu.style.left = `${rect.left}px`;
+
+            document.body.appendChild(menu);
+
+            // 点击其他地方关闭菜单
+            const closeMenu = (e) => {
+                if (!menu.contains(e.target) && e.target !== headersPresetBtn) {
+                    document.body.removeChild(menu);
+                    document.removeEventListener('click', closeMenu);
+                }
+            };
+
+            // 延迟添加事件监听器，避免立即触发
+            setTimeout(() => {
+                document.addEventListener('click', closeMenu);
+            }, 0);
+        });
+    }
+
+    // 处理表格式的form-data界面
+    function initFormDataTable() {
+        const textarea = document.getElementById('{{ form.request_body_form_data.id_for_label }}');
+        const paramsContainer = document.getElementById('form-data-params');
+        const addParamBtn = document.getElementById('add-param-btn');
+        const selectAllCheckbox = document.getElementById('select-all-params');
+
+        // 从文本区域解析参数
+        function parseParams() {
+            const params = [];
+            if (textarea.value) {
+                const lines = textarea.value.trim().split('\n');
+                for (const line of lines) {
+                    if (line.includes('=')) {
+                        const [key, value] = line.split('=', 2);
+                        params.push({
+                            key: key.trim(),
+                            value: value.trim(),
+                            type: 'Text',
+                            description: ''
+                        });
+                    }
+                }
+            }
+
+            // 确保至少有一个空行
+            if (params.length === 0) {
+                params.push({
+                    key: '',
+                    value: '',
+                    type: 'Text',
+                    description: ''
+                });
+            }
+
+            return params;
+        }
+
+        // 更新文本区域的值
+        function updateTextarea() {
+            const rows = paramsContainer.querySelectorAll('tr');
+            const lines = [];
+
+            rows.forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    const keyInput = row.querySelector('.param-key');
+                    const valueInput = row.querySelector('.param-value');
+
+                    if (keyInput && valueInput && keyInput.value.trim()) {
+                        lines.push(`${keyInput.value.trim()}=${valueInput.value.trim()}`);
+                    }
+                }
+            });
+
+            textarea.value = lines.join('\n');
+        }
+
+        // 添加参数行
+        function addParamRow(param = { key: '', value: '', type: 'Text', description: '' }) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="text-center align-middle">
+                    <input type="checkbox" class="form-check-input param-checkbox" checked>
+                </td>
+                <td>
+                    <input type="text" class="form-control param-key" value="${param.key}" placeholder="Key">
+                </td>
+                <td>
+                    <select class="form-select param-type">
+                        <option value="Text" ${param.type === 'Text' ? 'selected' : ''}>Text</option>
+                        <option value="File" ${param.type === 'File' ? 'selected' : ''}>File</option>
+                        <option value="JSON" ${param.type === 'JSON' ? 'selected' : ''}>JSON</option>
+                    </select>
+                </td>
+                <td>
+                    <input type="text" class="form-control param-value" value='${param.value}'>
+                </td>
+                <td>
+                    <input type="text" class="form-control param-description" value="${param.description}" placeholder="Description">
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 delete-param-btn">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+
+            // 添加事件监听器
+            const keyInput = row.querySelector('.param-key');
+            const valueInput = row.querySelector('.param-value');
+            const checkbox = row.querySelector('.param-checkbox');
+            const deleteBtn = row.querySelector('.delete-param-btn');
+
+            keyInput.addEventListener('input', updateTextarea);
+            valueInput.addEventListener('input', updateTextarea);
+            checkbox.addEventListener('change', updateTextarea);
+
+            deleteBtn.addEventListener('click', () => {
+                row.remove();
+                updateTextarea();
+            });
+
+            paramsContainer.appendChild(row);
+        }
+
+        // 初始化表格
+        const params = parseParams();
+        params.forEach(param => addParamRow(param));
+
+        // 添加参数按钮
+        addParamBtn.addEventListener('click', () => {
+            addParamRow();
+            updateTextarea();
+        });
+
+        // 全选/取消全选
+        selectAllCheckbox.addEventListener('change', () => {
+            const checkboxes = paramsContainer.querySelectorAll('.param-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateTextarea();
+        });
+
+        // 批量编辑按钮
+        document.getElementById('bulk-edit-btn').addEventListener('click', () => {
+            // 显示一个模态对话框，允许批量编辑
+            alert('批量编辑功能将在未来版本中实现');
+        });
+    }
+
+    // 处理表格式的提取参数界面
+    function initExtractParamsTable() {
+        const textarea = document.getElementById('{{ form.extract_params_json.id_for_label }}');
+        const extractContainer = document.getElementById('extract-container');
+        const addExtractBtn = document.getElementById('add-extract-btn');
+        const selectAllCheckbox = document.getElementById('select-all-extract');
+        const toggleExtractBtn = document.getElementById('toggle-extract-table');
+        const toggleExtractIcon = document.getElementById('toggle-extract-icon');
+        const extractTableContainer = document.getElementById('extract-table-container');
+        const bulkEditBtn = document.getElementById('bulk-edit-extract-btn');
+        const bulkEditBtn2 = document.getElementById('bulk-edit-extract-btn-2');
+        const extractPresetBtn = document.getElementById('extract-preset-btn');
+
+        // 常用提取路径预设
+        const extractPresets = {
+            'Token': [
+                { name: 'token', path: '$.data.token', description: 'Authentication token' }
+            ],
+            'User Info': [
+                { name: 'userId', path: '$.data.user.id', description: 'User ID' },
+                { name: 'username', path: '$.data.user.username', description: 'Username' }
+            ],
+            'Pagination': [
+                { name: 'total', path: '$.data.pagination.total', description: 'Total records' },
+                { name: 'page', path: '$.data.pagination.page', description: 'Current page' }
+            ]
+        };
+
+        // 从JSON文本区域解析提取参数
+        function parseExtractParams() {
+            const params = [];
+            if (textarea.value) {
+                try {
+                    const extractArray = JSON.parse(textarea.value);
+                    for (const item of extractArray) {
+                        params.push({
+                            name: item.name || '',
+                            path: item.path || '',
+                            description: item.description || ''
+                        });
+                    }
+                } catch (e) {
+                    console.error('Error parsing extract params JSON:', e);
+                }
+            }
+
+            // 确保至少有一个空行
+            if (params.length === 0) {
+                params.push({
+                    name: '',
+                    path: '',
+                    description: ''
+                });
+            }
+
+            return params;
+        }
+
+        // 更新JSON文本区域的值
+        function updateExtractTextarea() {
+            const rows = extractContainer.querySelectorAll('tr');
+            const extractParams = [];
+
+            rows.forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    const nameInput = row.querySelector('.extract-name');
+                    const pathInput = row.querySelector('.extract-path');
+                    const descInput = row.querySelector('.extract-description');
+
+                    if (nameInput && pathInput && nameInput.value.trim()) {
+                        extractParams.push({
+                            name: nameInput.value.trim(),
+                            path: pathInput.value.trim(),
+                            description: descInput ? descInput.value.trim() : ''
+                        });
+                    }
+                }
+            });
+
+            textarea.value = JSON.stringify(extractParams, null, 2);
+        }
+
+        // 添加提取参数行
+        function addExtractRow(param = { name: '', path: '', description: '' }) {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td class="text-center align-middle">
+                    <input type="checkbox" class="form-check-input extract-checkbox" checked>
+                </td>
+                <td>
+                    <input type="text" class="form-control extract-name" value="${param.name}" placeholder="Parameter Name">
+                </td>
+                <td>
+                    <input type="text" class="form-control extract-path" value="${param.path}" placeholder="JSONPath (e.g., $.data.token)">
+                </td>
+                <td>
+                    <input type="text" class="form-control extract-description" value="${param.description}" placeholder="Description">
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 delete-extract-btn">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+
+            // 添加事件监听器
+            const nameInput = row.querySelector('.extract-name');
+            const pathInput = row.querySelector('.extract-path');
+            const descInput = row.querySelector('.extract-description');
+            const checkbox = row.querySelector('.extract-checkbox');
+            const deleteBtn = row.querySelector('.delete-extract-btn');
+
+            nameInput.addEventListener('input', updateExtractTextarea);
+            pathInput.addEventListener('input', updateExtractTextarea);
+            descInput.addEventListener('input', updateExtractTextarea);
+            checkbox.addEventListener('change', updateExtractTextarea);
+
+            // 添加JSONPath自动完成功能
+            pathInput.addEventListener('input', function() {
+                const commonPaths = [
+                    '$.data', '$.data.id', '$.data.token', '$.message',
+                    '$.data.user', '$.data.user.id', '$.data.items',
+                    '$.data.pagination', '$.data.pagination.total'
+                ];
+
+                const value = this.value.trim();
+                if (value) {
+                    const match = commonPaths.find(p => p.startsWith(value));
+                    if (match && match !== value) {
+                        this.value = match;
+                        // 选择补全的部分
+                        const startPos = value.length;
+                        const endPos = match.length;
+                        setTimeout(() => {
+                            this.setSelectionRange(startPos, endPos);
+                        }, 0);
+                    }
+                }
+            });
+
+            deleteBtn.addEventListener('click', () => {
+                row.remove();
+                updateExtractTextarea();
+            });
+
+            extractContainer.appendChild(row);
+        }
+
+        // 初始化表格
+        const extractParams = parseExtractParams();
+        extractParams.forEach(param => addExtractRow(param));
+
+        // 添加提取参数按钮
+        addExtractBtn.addEventListener('click', () => {
+            addExtractRow();
+            updateExtractTextarea();
+        });
+
+        // 全选/取消全选
+        selectAllCheckbox.addEventListener('change', () => {
+            const checkboxes = extractContainer.querySelectorAll('.extract-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateExtractTextarea();
+        });
+
+        // 批量编辑按钮
+        bulkEditBtn.addEventListener('click', showBulkEditModal);
+        bulkEditBtn2.addEventListener('click', showBulkEditModal);
+
+        function showBulkEditModal() {
+            // 显示一个模态对话框，允许批量编辑
+            alert('批量编辑功能将在未来版本中实现');
+        }
+
+        // 切换提取参数表格显示/隐藏
+        toggleExtractBtn.addEventListener('click', () => {
+            if (extractTableContainer.style.display === 'none') {
+                extractTableContainer.style.display = 'block';
+                toggleExtractIcon.classList.remove('bi-chevron-up');
+                toggleExtractIcon.classList.add('bi-chevron-down');
+            } else {
+                extractTableContainer.style.display = 'none';
+                toggleExtractIcon.classList.remove('bi-chevron-down');
+                toggleExtractIcon.classList.add('bi-chevron-up');
+            }
+        });
+
+        // 预设按钮
+        extractPresetBtn.addEventListener('click', () => {
+            // 创建预设菜单
+            const menu = document.createElement('div');
+            menu.className = 'dropdown-menu show';
+            menu.style.position = 'absolute';
+            menu.style.transform = 'translate3d(0px, 40px, 0px)';
+            menu.style.top = '0px';
+            menu.style.left = '0px';
+            menu.style.willChange = 'transform';
+
+            // 添加预设选项
+            for (const [name, params] of Object.entries(extractPresets)) {
+                const item = document.createElement('a');
+                item.className = 'dropdown-item';
+                item.href = '#';
+                item.textContent = name;
+
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+
+                    // 应用预设
+                    extractContainer.innerHTML = '';
+                    for (const param of params) {
+                        addExtractRow(param);
+                    }
+                    updateExtractTextarea();
+
+                    // 移除菜单
+                    document.body.removeChild(menu);
+                });
+
+                menu.appendChild(item);
+            }
+
+            // 添加自定义选项
+            const customItem = document.createElement('div');
+            customItem.className = 'dropdown-divider';
+            menu.appendChild(customItem);
+
+            const saveItem = document.createElement('a');
+            saveItem.className = 'dropdown-item';
+            saveItem.href = '#';
+            saveItem.textContent = 'Save Current as Preset...';
+            saveItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('保存预设功能将在未来版本中实现');
+                document.body.removeChild(menu);
+            });
+            menu.appendChild(saveItem);
+
+            // 定位并显示菜单
+            const rect = extractPresetBtn.getBoundingClientRect();
+            menu.style.top = `${rect.bottom}px`;
+            menu.style.left = `${rect.left}px`;
+
+            document.body.appendChild(menu);
+
+            // 点击其他地方关闭菜单
+            const closeMenu = (e) => {
+                if (!menu.contains(e.target) && e.target !== extractPresetBtn) {
+                    document.body.removeChild(menu);
+                    document.removeEventListener('click', closeMenu);
+                }
+            };
+
+            // 延迟添加事件监听器，避免立即触发
+            setTimeout(() => {
+                document.addEventListener('click', closeMenu);
+            }, 0);
+        });
+    }
+
+    // 处理表格式的验证规则界面
+    function initValidationRulesTable() {
+        const textarea = document.getElementById('{{ form.validation_rules_json.id_for_label }}');
+        const validationContainer = document.getElementById('validation-container');
+        const addValidationBtn = document.getElementById('add-validation-btn');
+        const selectAllCheckbox = document.getElementById('select-all-validation');
+        const toggleValidationBtn = document.getElementById('toggle-validation-table');
+        const toggleValidationIcon = document.getElementById('toggle-validation-icon');
+        const validationTableContainer = document.getElementById('validation-table-container');
+        const bulkEditBtn = document.getElementById('bulk-edit-validation-btn');
+        const bulkEditBtn2 = document.getElementById('bulk-edit-validation-btn-2');
+        const validationPresetBtn = document.getElementById('validation-preset-btn');
+
+        // 验证器类型
+        const validatorTypes = [
+            { value: 'eq', label: 'Equal (==)', description: 'Check if values are equal' },
+            { value: 'ne', label: 'Not Equal (!=)', description: 'Check if values are not equal' },
+            { value: 'gt', label: 'Greater Than (>)', description: 'Check if value is greater than expected' },
+            { value: 'ge', label: 'Greater or Equal (>=)', description: 'Check if value is greater than or equal to expected' },
+            { value: 'lt', label: 'Less Than (<)', description: 'Check if value is less than expected' },
+            { value: 'le', label: 'Less or Equal (<=)', description: 'Check if value is less than or equal to expected' },
+            { value: 'contains', label: 'Contains', description: 'Check if value contains expected substring' },
+            { value: 'startswith', label: 'Starts With', description: 'Check if value starts with expected substring' },
+            { value: 'endswith', label: 'Ends With', description: 'Check if value ends with expected substring' },
+            { value: 'regex_match', label: 'Regex Match', description: 'Check if value matches regex pattern' },
+            { value: 'length_eq', label: 'Length Equal', description: 'Check if length of value equals expected' },
+            { value: 'length_gt', label: 'Length Greater Than', description: 'Check if length of value is greater than expected' },
+            { value: 'length_ge', label: 'Length Greater or Equal', description: 'Check if length of value is greater than or equal to expected' },
+            { value: 'length_lt', label: 'Length Less Than', description: 'Check if length of value is less than expected' },
+            { value: 'length_le', label: 'Length Less or Equal', description: 'Check if length of value is less than or equal to expected' }
+        ];
+
+        // 常用验证规则预设
+        const validationPresets = {
+            'Status Code': [
+                { validator: 'eq', path: 'status_code', value: '200', description: 'Check if status code is 200' }
+            ],
+            'Success Response': [
+                { validator: 'eq', path: '$.code', value: '0', description: 'Check if response code is 0 (success)' },
+                { validator: 'contains', path: '$.message', value: 'success', description: 'Check if message contains "success"' }
+            ],
+            'Data Not Empty': [
+                { validator: 'length_gt', path: '$.data', value: '0', description: 'Check if data array is not empty' }
+            ]
+        };
+
+        // 从JSON文本区域解析验证规则
+        function parseValidationRules() {
+            const rules = [];
+            if (textarea.value) {
+                try {
+                    const rulesArray = JSON.parse(textarea.value);
+                    for (const rule of rulesArray) {
+                        // 处理验证规则格式
+                        const validator = Object.keys(rule)[0];
+                        const params = rule[validator];
+
+                        if (Array.isArray(params) && params.length >= 2) {
+                            rules.push({
+                                validator: validator,
+                                path: params[0],
+                                value: String(params[1]),
+                                description: ''
+                            });
+                        }
+                    }
+                } catch (e) {
+                    console.error('Error parsing validation rules JSON:', e);
+                }
+            }
+
+            // 确保至少有一个空行
+            if (rules.length === 0) {
+                rules.push({
+                    validator: 'eq',
+                    path: '',
+                    value: '',
+                    description: ''
+                });
+            }
+
+            return rules;
+        }
+
+        // 更新JSON文本区域的值
+        function updateValidationTextarea() {
+            const rows = validationContainer.querySelectorAll('tr');
+            const rules = [];
+
+            rows.forEach(row => {
+                const checkbox = row.querySelector('input[type="checkbox"]');
+                if (checkbox && checkbox.checked) {
+                    const validatorSelect = row.querySelector('.validation-validator');
+                    const pathInput = row.querySelector('.validation-path');
+                    const valueInput = row.querySelector('.validation-value');
+
+                    if (validatorSelect && pathInput && pathInput.value.trim()) {
+                        const rule = {};
+                        rule[validatorSelect.value] = [pathInput.value.trim(), valueInput.value.trim()];
+                        rules.push(rule);
+                    }
+                }
+            });
+
+            textarea.value = JSON.stringify(rules, null, 2);
+        }
+
+        // 添加验证规则行
+        function addValidationRow(rule = { validator: 'eq', path: '', value: '', description: '' }) {
+            const row = document.createElement('tr');
+
+            // 创建验证器选择下拉菜单选项
+            let validatorOptions = '';
+            validatorTypes.forEach(type => {
+                validatorOptions += `<option value="${type.value}" ${rule.validator === type.value ? 'selected' : ''}>${type.label}</option>`;
+            });
+
+            row.innerHTML = `
+                <td class="text-center align-middle">
+                    <input type="checkbox" class="form-check-input validation-checkbox" checked>
+                </td>
+                <td>
+                    <select class="form-select validation-validator">
+                        ${validatorOptions}
+                    </select>
+                </td>
+                <td>
+                    <input type="text" class="form-control validation-path" value="${rule.path}" placeholder="JSONPath (e.g., $.data.id)">
+                </td>
+                <td>
+                    <input type="text" class="form-control validation-value" value="${rule.value}" placeholder="Expected value">
+                </td>
+                <td>
+                    <input type="text" class="form-control validation-description" value="${rule.description}" placeholder="Description">
+                </td>
+                <td class="text-center align-middle">
+                    <button type="button" class="btn btn-sm btn-link text-danger p-0 delete-validation-btn">
+                        <i class="bi bi-trash"></i>
+                    </button>
+                </td>
+            `;
+
+            // 添加事件监听器
+            const validatorSelect = row.querySelector('.validation-validator');
+            const pathInput = row.querySelector('.validation-path');
+            const valueInput = row.querySelector('.validation-value');
+            const descInput = row.querySelector('.validation-description');
+            const checkbox = row.querySelector('.validation-checkbox');
+            const deleteBtn = row.querySelector('.delete-validation-btn');
+
+            validatorSelect.addEventListener('change', updateValidationTextarea);
+            pathInput.addEventListener('input', updateValidationTextarea);
+            valueInput.addEventListener('input', updateValidationTextarea);
+            descInput.addEventListener('input', updateValidationTextarea);
+            checkbox.addEventListener('change', updateValidationTextarea);
+
+            // 添加JSONPath自动完成功能
+            pathInput.addEventListener('input', function() {
+                const commonPaths = [
+                    'status_code', '$.code', '$.message', '$.data',
+                    '$.data.id', '$.data.token', '$.data.user',
+                    '$.data.items', '$.data.pagination.total',  '$.data.token', '$.data.user',
+                    '$.data.items', '$.data.pagination.total'
+                ];
+
+                const value = this.value.trim();
+                if (value) {
+                    const match = commonPaths.find(p => p.startsWith(value));
+                    if (match && match !== value) {
+                        this.value = match;
+                        // 选择补全的部分
+                        const startPos = value.length;
+                        const endPos = match.length;
+                        setTimeout(() => {
+                            this.setSelectionRange(startPos, endPos);
+                        }, 0);
+                    }
+                }
+            });
+
+            deleteBtn.addEventListener('click', () => {
+                row.remove();
+                updateValidationTextarea();
+            });
+
+            validationContainer.appendChild(row);
+        }
+
+        // 初始化表格
+        const validationRules = parseValidationRules();
+        validationRules.forEach(rule => addValidationRow(rule));
+
+        // 添加验证规则按钮
+        addValidationBtn.addEventListener('click', () => {
+            addValidationRow();
+            updateValidationTextarea();
+        });
+
+        // 全选/取消全选
+        selectAllCheckbox.addEventListener('change', () => {
+            const checkboxes = validationContainer.querySelectorAll('.validation-checkbox');
+            checkboxes.forEach(cb => {
+                cb.checked = selectAllCheckbox.checked;
+            });
+            updateValidationTextarea();
+        });
+
+        // 批量编辑按钮
+        bulkEditBtn.addEventListener('click', showBulkEditModal);
+        bulkEditBtn2.addEventListener('click', showBulkEditModal);
+
+        function showBulkEditModal() {
+            // 显示一个模态对话框，允许批量编辑
+            alert('批量编辑功能将在未来版本中实现');
+        }
+
+        // 切换验证规则表格显示/隐藏
+        toggleValidationBtn.addEventListener('click', () => {
+            if (validationTableContainer.style.display === 'none') {
+                validationTableContainer.style.display = 'block';
+                toggleValidationIcon.classList.remove('bi-chevron-up');
+                toggleValidationIcon.classList.add('bi-chevron-down');
+            } else {
+                validationTableContainer.style.display = 'none';
+                toggleValidationIcon.classList.remove('bi-chevron-down');
+                toggleValidationIcon.classList.add('bi-chevron-up');
+            }
+        });
+
+        // 预设按钮
+        validationPresetBtn.addEventListener('click', () => {
+            // 创建预设菜单
+            const menu = document.createElement('div');
+            menu.className = 'dropdown-menu show';
+            menu.style.position = 'absolute';
+            menu.style.transform = 'translate3d(0px, 40px, 0px)';
+            menu.style.top = '0px';
+            menu.style.left = '0px';
+            menu.style.willChange = 'transform';
+
+            // 添加预设选项
+            for (const [name, rules] of Object.entries(validationPresets)) {
+                const item = document.createElement('a');
+                item.className = 'dropdown-item';
+                item.href = '#';
+                item.textContent = name;
+
+                item.addEventListener('click', (e) => {
+                    e.preventDefault();
+
+                    // 应用预设
+                    validationContainer.innerHTML = '';
+                    for (const rule of rules) {
+                        addValidationRow(rule);
+                    }
+                    updateValidationTextarea();
+
+                    // 移除菜单
+                    document.body.removeChild(menu);
+                });
+
+                menu.appendChild(item);
+            }
+
+            // 添加自定义选项
+            const customItem = document.createElement('div');
+            customItem.className = 'dropdown-divider';
+            menu.appendChild(customItem);
+
+            const saveItem = document.createElement('a');
+            saveItem.className = 'dropdown-item';
+            saveItem.href = '#';
+            saveItem.textContent = 'Save Current as Preset...';
+            saveItem.addEventListener('click', (e) => {
+                e.preventDefault();
+                alert('保存预设功能将在未来版本中实现');
+                document.body.removeChild(menu);
+            });
+            menu.appendChild(saveItem);
+
+            // 定位并显示菜单
+            const rect = validationPresetBtn.getBoundingClientRect();
+            menu.style.top = `${rect.bottom}px`;
+            menu.style.left = `${rect.left}px`;
+
+            document.body.appendChild(menu);
+
+            // 点击其他地方关闭菜单
+            const closeMenu = (e) => {
+                if (!menu.contains(e.target) && e.target !== validationPresetBtn) {
+                    document.body.removeChild(menu);
+                    document.removeEventListener('click', closeMenu);
+                }
+            };
+
+            // 延迟添加事件监听器，避免立即触发
+            setTimeout(() => {
+                document.addEventListener('click', closeMenu);
+            }, 0);
+        });
+    }
+
+    // 在页面加载时初始化
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleBodyFormat();
+
+        // 监听请求方法变化
+        const methodSelect = document.getElementById('{{ form.request_method.id_for_label }}');
+        methodSelect.addEventListener('change', function() {
+            const method = this.value;
+            const jsonTextarea = document.getElementById('{{ form.request_body_json.id_for_label }}');
+            const formDataTextarea = document.getElementById('{{ form.request_body_form_data.id_for_label }}');
+
+            if (method === 'GET' || method === 'DELETE') {
+                jsonTextarea.setAttribute('disabled', 'disabled');
+                formDataTextarea.setAttribute('disabled', 'disabled');
+
+                // 禁用表格中的输入
+                const inputs = document.querySelectorAll('#form-data-params input, #form-data-params select, #form-data-params button');
+                inputs.forEach(input => input.setAttribute('disabled', 'disabled'));
+                document.getElementById('add-param-btn').setAttribute('disabled', 'disabled');
+            } else {
+                jsonTextarea.removeAttribute('disabled');
+                formDataTextarea.removeAttribute('disabled');
+
+                // 启用表格中的输入
+                const inputs = document.querySelectorAll('#form-data-params input, #form-data-params select, #form-data-params button');
+                inputs.forEach(input => input.removeAttribute('disabled'));
+                document.getElementById('add-param-btn').removeAttribute('disabled');
+            }
+        });
+
+        // 初始化时检查一次
+        if (methodSelect.value === 'GET' || methodSelect.value === 'DELETE') {
+            document.getElementById('{{ form.request_body_json.id_for_label }}').setAttribute('disabled', 'disabled');
+            document.getElementById('{{ form.request_body_form_data.id_for_label }}').setAttribute('disabled', 'disabled');
+        }
+
+        // 初始化form-data表格
+        initFormDataTable();
+
+        // 初始化URL参数表格
+        initUrlParamsTable();
+
+        // 初始化请求头表格
+        initHeadersTable();
+
+        // 初始化提取参数表格
+        initExtractParamsTable();
+
+        // 初始化验证规则表格
+        initValidationRulesTable();
+    });
+
+    function toggleBodyFormat() {
+        const jsonFormat = document.getElementById('format_json').checked;
+        const jsonContainer = document.getElementById('json_body_container');
+        const formDataContainer = document.getElementById('form_data_container');
+
+        if (jsonFormat) {
+            jsonContainer.style.display = 'block';
+            formDataContainer.style.display = 'none';
+        } else {
+            jsonContainer.style.display = 'none';
+            formDataContainer.style.display = 'block';
+        }
+    }
+</script>
+{% endblock %}
+
+{% block extra_head %}
+<style>
+    .form-data-table th, .form-data-table td,
+    .params-table th, .params-table td,
+    .headers-table th, .headers-table td,
+    .extract-table th, .extract-table td,
+    .validation-table th, .validation-table td {
+        padding: 0.5rem;
+        vertical-align: middle;
+    }
+
+    .form-data-table .form-control,
+    .form-data-table .form-select,
+    .params-table .form-control,
+    .headers-table .form-control,
+    .extract-table .form-control,
+    .validation-table .form-control,
+    .validation-table .form-select {
+        padding: 0.375rem 0.5rem;
+        font-size: 0.875rem;
+    }
+
+    .form-data-table tbody tr:hover,
+    .params-table tbody tr:hover,
+    .headers-table tbody tr:hover,
+    .extract-table tbody tr:hover,
+    .validation-table tbody tr:hover {
+        background-color: rgba(0, 0, 0, 0.02);
+    }
+
+    /* 下拉菜单样式 */
+    .dropdown-menu {
+        z-index: 1050;
+        min-width: 10rem;
+        padding: 0.5rem 0;
+        font-size: 0.875rem;
+        background-color: #fff;
+        border: 1px solid rgba(0, 0, 0, 0.15);
+        border-radius: 0.25rem;
+    }
+
+    .dropdown-item {
+        display: block;
+        width: 100%;
+        padding: 0.25rem 1.5rem;
+        clear: both;
+        font-weight: 400;
+        color: #212529;
+        text-align: inherit;
+        white-space: nowrap;
+        background-color: transparent;
+        border: 0;
+        text-decoration: none;
+    }
+
+    .dropdown-item:hover, .dropdown-item:focus {
+        color: #16181b;
+        text-decoration: none;
+        background-color: #f8f9fa;
+    }
+
+    .dropdown-divider {
+        height: 0;
+        margin: 0.5rem 0;
+        overflow: hidden;
+        border-top: 1px solid #e9ecef;
+    }
+
+    /* 提取参数表格特有样式 */
+    .extract-table {
+        border-collapse: collapse;
+    }
+
+    .extract-table .extract-path,
+    .validation-table .validation-path {
+        font-family: monospace;
+    }
+</style>
+{% endblock %}
