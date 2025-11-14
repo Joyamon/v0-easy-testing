@@ -1,0 +1,338 @@
+{% extends 'base.html' %}
+{% load static %}
+
+{% block title %}运行测试用例: {{ test_case.name }}{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h2>运行测试用例: {{ test_case.name }}</h2>
+                <div>
+                    <a href="{% url 'test_case_detail' test_case.pk %}" class="btn btn-outline-secondary me-2">
+                        <i class="bi bi-arrow-left"></i> 返回
+                    </a>
+                    <button type="button" id="runButton" class="btn btn-success" disabled>
+                        <i class="bi bi-play-fill"></i> 运行
+                    </button>
+                </div>
+            </div>
+
+            <div class="row">
+                <div class="col-md-8">
+                    <div class="card mb-4">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">测试用例详情</h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>项目:</strong>
+                                        <a href="{% url 'project_detail' test_case.project.pk %}" class="text-decoration-none">
+                                            {{ test_case.project.name }}
+                                        </a>
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>创建者:</strong> {{ test_case.created_by.username }}</p>
+                                </div>
+                            </div>
+
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <p><strong>请求方法:</strong>
+                                        <span class="badge bg-{% if test_case.request_method == 'GET' %}primary{% elif test_case.request_method == 'POST' %}success{% elif test_case.request_method == 'PUT' %}warning{% elif test_case.request_method == 'DELETE' %}danger{% else %}secondary{% endif %}">
+                                            {{ test_case.request_method }}
+                                        </span>
+                                    </p>
+                                </div>
+                                <div class="col-md-6">
+                                    <p><strong>预期状态码:</strong>
+                                        <span class="badge bg-info">{{ test_case.expected_status_code }}</span>
+                                    </p>
+                                </div>
+                            </div>
+
+                            <div class="mb-3">
+                                <p><strong>请求URL:</strong></p>
+                                <code class="d-block p-2 bg-light rounded">{{ test_case.request_url }}</code>
+                            </div>
+
+                            {% if test_case.description %}
+                            <div class="mb-3">
+                                <p><strong>描述:</strong></p>
+                                <p class="text-muted">{{ test_case.description }}</p>
+                            </div>
+                            {% endif %}
+
+                            {% if test_case.request_headers %}
+                            <div class="mb-3">
+                                <p><strong>请求头:</strong></p>
+                                <pre class="bg-light p-2 rounded"><code>{{ test_case.request_headers }}</code></pre>
+                            </div>
+                            {% endif %}
+
+                            {% if test_case.request_body %}
+                            <div class="mb-3">
+                                <p><strong>请求体:</strong></p>
+                                <pre class="bg-light p-2 rounded"><code>{{ test_case.request_body }}</code></pre>
+                            </div>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-4">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="card-title mb-0">运行配置</h5>
+                        </div>
+                        <div class="card-body">
+                            <form id="runForm" method="post">
+                                {% csrf_token %}
+                                <div class="mb-3">
+                                    <label for="environment" class="form-label">选择运行环境</label>
+                                    <select class="form-select" id="environment" name="environment" required>
+                                        <option value="">选择运行环境</option>
+                                        {% for env in environments %}
+                                            <option value="{{ env.id }}" data-base-url="{{ env.base_url }}">
+                                                {{ env.name }} ({{ env.base_url }})
+                                            </option>
+                                        {% endfor %}
+                                    </select>
+                                    <div class="form-text">选择测试用例运行的环境</div>
+                                </div>
+
+                                <div id="environmentInfo" class="alert alert-info d-none">
+                                    <h6 class="alert-heading">环境信息</h6>
+                                    <p class="mb-1"><strong>基础URL:</strong> <span id="baseUrl"></span></p>
+                                    <p class="mb-0"><strong>完整URL:</strong> <span id="fullUrl"></span></p>
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+
+                    {% if environments %}
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h6 class="card-title mb-0">可用环境</h6>
+                        </div>
+                        <div class="card-body">
+                            <div class="list-group list-group-flush">
+                                {% for env in environments %}
+                                <div class="list-group-item px-0 py-2">
+                                    <div class="d-flex justify-content-between align-items-start">
+                                        <div>
+                                            <h6 class="mb-1">{{ env.name }}</h6>
+                                            <small class="text-muted">{{ env.base_url }}</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                {% endfor %}
+                            </div>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 运行确认模态框 -->
+<div class="modal fade" id="runConfirmModal" tabindex="-1" aria-labelledby="runConfirmModalLabel" aria-hidden="true">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="runConfirmModalLabel">确认运行测试用例</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+            </div>
+            <div class="modal-body">
+                <p>您确定要运行测试用例 "<strong>{{ test_case.name }}</strong>" 吗？</p>
+                <div id="runSummary"></div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <button type="button" class="btn btn-success" id="confirmRunButton">
+                    <i class="bi bi-play-fill"></i> 确认运行
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- 运行中模态框 -->
+<div class="modal fade" id="runningModal" tabindex="-1" aria-labelledby="runningModalLabel" aria-hidden="true" data-bs-backdrop="static" data-bs-keyboard="false">
+    <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title" id="runningModalLabel">正在运行测试用例</h5>
+            </div>
+            <div class="modal-body text-center">
+                <div class="spinner-border text-success mb-3" role="status">
+                    <span class="visually-hidden">Loading...</span>
+                </div>
+                <p>测试用例正在后台执行，请稍候...</p>
+                <p class="text-muted">您可以在测试运行页面查看详细结果</p>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const environmentSelect = document.getElementById('environment');
+    const runButton = document.getElementById('runButton');
+    const runForm = document.getElementById('runForm');
+    const environmentInfo = document.getElementById('environmentInfo');
+    const baseUrlSpan = document.getElementById('baseUrl');
+    const fullUrlSpan = document.getElementById('fullUrl');
+    const runConfirmModal = new bootstrap.Modal(document.getElementById('runConfirmModal'));
+    const runningModal = new bootstrap.Modal(document.getElementById('runningModal'));
+    const confirmRunButton = document.getElementById('confirmRunButton');
+    const runSummary = document.getElementById('runSummary');
+
+    // 存储键
+    const STORAGE_KEY = 'easytesting_case_run_environment_{{ test_case.project.id }}';
+
+    // 加载保存的环境选择
+    function loadSavedEnvironment() {
+        const savedEnv = localStorage.getItem(STORAGE_KEY);
+        if (savedEnv && environmentSelect) {
+            // 检查保存的环境是否仍然存在
+            const option = environmentSelect.querySelector(`option[value="${savedEnv}"]`);
+            if (option) {
+                environmentSelect.value = savedEnv;
+                updateEnvironmentInfo();
+                updateRunButtonState();
+            }
+        }
+    }
+
+    // 保存环境选择
+    function saveEnvironment() {
+        if (environmentSelect.value) {
+            localStorage.setItem(STORAGE_KEY, environmentSelect.value);
+        }
+    }
+
+    // 更新环境信息显示
+    function updateEnvironmentInfo() {
+        const selectedOption = environmentSelect.options[environmentSelect.selectedIndex];
+        if (selectedOption && selectedOption.value) {
+            const baseUrl = selectedOption.dataset.baseUrl;
+            const testCaseUrl = '{{ test_case.request_url }}';
+
+            baseUrlSpan.textContent = baseUrl;
+            fullUrlSpan.textContent = baseUrl + testCaseUrl;
+            environmentInfo.classList.remove('d-none');
+        } else {
+            environmentInfo.classList.add('d-none');
+        }
+    }
+
+    // 更新运行按钮状态
+    function updateRunButtonState() {
+        runButton.disabled = !environmentSelect.value;
+    }
+
+    // 生成运行摘要
+    function generateRunSummary() {
+        const selectedEnv = environmentSelect.options[environmentSelect.selectedIndex];
+        const envName = selectedEnv ? selectedEnv.text : '';
+        const baseUrl = selectedEnv ? selectedEnv.dataset.baseUrl : '';
+        const fullUrl = baseUrl + '{{ test_case.request_url }}';
+
+        const summary = `
+            <div class="mb-3">
+                <p><strong>环境:</strong> ${envName}</p>
+                <p><strong>请求方法:</strong> <span class="badge bg-{% if test_case.request_method == 'GET' %}primary{% elif test_case.request_method == 'POST' %}success{% elif test_case.request_method == 'PUT' %}warning{% elif test_case.request_method == 'DELETE' %}danger{% else %}secondary{% endif %}">{{ test_case.request_method }}</span></p>
+                <p><strong>完整URL:</strong> <code>${fullUrl}</code></p>
+                <p><strong>预期状态码:</strong> <span class="badge bg-info">{{ test_case.expected_status_code }}</span></p>
+            </div>
+        `;
+
+        runSummary.innerHTML = summary;
+    }
+
+    // 事件监听器
+    environmentSelect.addEventListener('change', function() {
+        updateEnvironmentInfo();
+        updateRunButtonState();
+        saveEnvironment();
+    });
+
+    runButton.addEventListener('click', function() {
+        if (!environmentSelect.value) {
+            alert('请先选择环境');
+            return;
+        }
+
+        generateRunSummary();
+        runConfirmModal.show();
+    });
+
+    confirmRunButton.addEventListener('click', function() {
+        runConfirmModal.hide();
+
+        // 显示运行中模态框
+        runningModal.show();
+
+        // 提交表单
+        runForm.submit();
+    });
+
+    // 初始化
+    loadSavedEnvironment();
+});
+</script>
+
+<style>
+.badge {
+    font-size: 0.75rem;
+}
+
+code {
+    font-size: 0.875rem;
+    color: #e83e8c;
+    background-color: #f8f9fa;
+    padding: 0.125rem 0.25rem;
+    border-radius: 0.25rem;
+}
+
+pre {
+    font-size: 0.875rem;
+    max-height: 200px;
+    overflow-y: auto;
+}
+
+.list-group-item {
+    border: none;
+    border-bottom: 1px solid #dee2e6;
+}
+
+.list-group-item:last-child {
+    border-bottom: none;
+}
+
+.spinner-border {
+    width: 3rem;
+    height: 3rem;
+}
+
+.modal-body .text-muted {
+    font-size: 0.9rem;
+}
+
+.alert-info {
+    background-color: #e7f3ff;
+    border-color: #b8daff;
+    color: #004085;
+}
+
+.form-text {
+    font-size: 0.875rem;
+}
+</style>
+{% endblock %}

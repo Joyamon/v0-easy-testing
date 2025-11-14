@@ -1,0 +1,205 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ test_case.name }} - EasyTesting{% endblock %}
+
+{% block header %}测试用例: {{ test_case.name }}{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group">
+    <a href="{% url 'test_case_edit' pk=test_case.pk %}" class="btn btn-outline-secondary">
+        <i class="bi bi-pencil"></i> 编辑
+    </a>
+    <a href="{% url 'test_case_run' pk=test_case.pk %}" class="btn btn-success">
+        <i class="bi bi-play-fill"></i> 运行
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>测试用例详情</span>
+                <a href="{% url 'test_case_edit' pk=test_case.pk %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-pencil"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5 class="text-muted mb-2">项目</h5>
+                    <p>
+                        <a href="{% url 'project_detail' pk=test_case.project.pk %}" class="text-decoration-none">
+                            {{ test_case.project.name }}
+                        </a>
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-muted mb-2">描述</h5>
+                    <p>{{ test_case.description|default:"No description provided" }}</p>
+                </div>
+
+                <div class="row">
+                    <div class="col-md-6 mb-3">
+                        <h5 class="text-muted mb-2">创建人</h5>
+                        <div class="d-flex align-items-center">
+                            <span class="avatar avatar-sm bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                                {{ test_case.created_by.username|first|upper }}
+                            </span>
+                            <span>{{ test_case.created_by.username }}</span>
+                        </div>
+                    </div>
+
+                    <div class="col-md-6 mb-3">
+                        <h5 class="text-muted mb-2">创建时间</h5>
+                        <p class="mb-0">{{ test_case.created_at|date:"Y-m-d H:i" }}</p>
+                    </div>
+
+                    <div class="col-md-6">
+                        <h5 class="text-muted mb-2">更新时间</h5>
+                        <p class="mb-0">{{ test_case.updated_at|date:"Y-m-d H:i" }}</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <span>请求详情</span>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <div class="d-flex align-items-center mb-2">
+                        <span class="badge
+                            {% if test_case.request_method == 'GET' %}bg-success{% endif %}
+                            {% if test_case.request_method == 'POST' %}bg-primary{% endif %}
+                            {% if test_case.request_method == 'PUT' %}bg-warning{% endif %}
+                            {% if test_case.request_method == 'DELETE' %}bg-danger{% endif %}
+                            {% if test_case.request_method == 'PATCH' %}bg-info{% endif %}
+                            me-2
+                        ">
+                            {{ test_case.request_method }}
+                        </span>
+                        <code class="bg-light px-3 py-2 rounded flex-grow-1">{{ test_case.request_url }}</code>
+                    </div>
+                    <div class="d-flex align-items-center">
+                        <span class="badge bg-light text-dark me-2">预期状态码:</span>
+                        <span class="badge bg-secondary">{{ test_case.expected_status_code }}</span>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-muted mb-2">请求头</h5>
+                    {% if test_case.request_headers %}
+                        <code class="bg-light p-3 rounded">{{ test_case.request_headers|pprint }}</code>
+                    {% else %}
+                        <p class="text-muted">暂时没有请求头</p>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-muted mb-2">请求体格式</h5>
+                    <span class="badge bg-info">{{ test_case.get_request_body_format_display }}</span>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-muted mb-2">请求体</h5>
+                    {% if test_case.request_body %}
+                        <code class="bg-light p-2 rounded">{{ test_case.request_body|pprint }}</code>
+                    {% else %}
+                        <p class="text-muted">暂时没有请求体</p>
+                    {% endif %}
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-muted mb-2">断言</h5>
+                    {% if test_case.validation_rules %}
+                        <code class="bg-light p-3 rounded">{{ test_case.validation_rules|pprint }}</code>
+                    {% else %}
+                        <p class="text-muted">暂时没有断言</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>最近运行结果</span>
+                <a href="{% url 'test_case_run' pk=test_case.pk %}" class="btn btn-sm btn-success">
+                    <i class="bi bi-play-fill"></i> 运行
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>环境</th>
+                                <th>状态</th>
+                                <th>响应时间</th>
+                                <th>响应状态</th>
+                                <th>创建时间</th>
+                                <th class="text-end">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for result in test_results %}
+                                <tr>
+                                    <td>
+                                        <a href="{% url 'test_run_detail' pk=result.test_run.pk %}" class="text-decoration-none">
+                                            {{ result.test_run.name }}
+                                        </a>
+                                    </td>
+                                    <td>{{ result.test_run.environment.name }}</td>
+                                    <td>
+                                        {% if result.status == 'passed' %}
+                                            <span class="badge bg-success">Passed</span>
+                                        {% elif result.status == 'failed' %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% elif result.status == 'error' %}
+                                            <span class="badge bg-warning">Error</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Skipped</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ result.response_time|floatformat:2 }} ms</td>
+                                    <td>
+                                        <span class="badge bg-light text-dark">{{ result.response_status_code }}</span>
+                                    </td>
+                                    <td>{{ result.created_at|date:"Y-m-d H:i" }}</td>
+                                    <td class="text-end">
+                                        <a href="{% url 'test_run_detail' pk=result.test_run.pk %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="7" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="bi bi-info-circle me-2"></i> No test results yet.
+                                        </div>
+                                        <a href="{% url 'test_case_run' pk=test_case.pk %}" class="btn btn-sm btn-success mt-2">
+                                            <i class="bi bi-play-fill"></i> Run Test Now
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+
+                {% include 'pagination.html' with page_obj=test_results %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

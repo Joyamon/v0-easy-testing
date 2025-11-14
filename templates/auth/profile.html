@@ -1,0 +1,169 @@
+{% extends 'base.html' %}
+
+{% block title %}个人资料 - EasyTesting{% endblock %}
+
+{% block header %}个人资料{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'edit_profile' %}" class="btn btn-outline-secondary">
+    <i class="bi bi-pencil"></i> 编辑个人资料
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-4 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>个人信息</span>
+                <a href="{% url 'edit_profile' %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-pencil"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="text-center mb-4">
+                    <div class="avatar avatar-lg bg-primary rounded-circle d-flex align-items-center justify-content-center mx-auto mb-3" style="width: 100px; height: 100px; font-size: 2.5rem;">
+                        {{ user.username|first|upper }}
+                    </div>
+                    <h5 class="mb-0">{{ user.username }}</h5>
+                    <p class="text-muted">{{ user.email }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2">姓名</h6>
+                    <p>{{ user.get_full_name|default:"未设置" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2">账户创建时间</h6>
+                    <p>{{ user.date_joined|date:"Y-m-d H:i" }}</p>
+                </div>
+                
+                <div class="mb-3">
+                    <h6 class="text-muted mb-2">上次登录</h6>
+                    <p>{{ user.last_login|date:"Y-m-d H:i"|default:"从未登录" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="col-md-8 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <span>活动统计</span>
+            </div>
+            <div class="card-body">
+                <div class="row mb-4">
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted mb-2">项目</h6>
+                                <h2 class="mb-0">{{ user.created_projects.count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted mb-2">测试用例</h6>
+                                <h2 class="mb-0">{{ user.created_test_cases.count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted mb-2">测试运行</h6>
+                                <h2 class="mb-0">{{ user.created_test_runs.count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="col-md-4 mb-3">
+                        <div class="card bg-light">
+                            <div class="card-body text-center">
+                                <h6 class="text-muted mb-2">测试报告</h6>
+                                <h2 class="mb-0">{{ user.created_test_reports.count }}</h2>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="mb-4">
+                    <h6 class="text-muted mb-3">最近活动</h6>
+                    <div class="list-group">
+                        {% for run in user.created_test_runs.all|dictsortreversed:"created_at"|slice:5 %}
+                            <div class="list-group-item list-group-item-action">
+                                <div class="d-flex w-100 justify-content-between">
+                                    <h6 class="mb-1">{{ run.name }}</h6>
+                                    <small>{{ run.created_at|date:"Y-m-d H:i" }}</small>
+                                </div>
+                                <p class="mb-1">项目: {{ run.project.name }}</p>
+                                <small class="text-muted">
+                                    状态: 
+                                    {% if run.status == 'completed' %}
+                                        <span class="badge bg-success">已完成</span>
+                                    {% elif run.status == 'failed' %}
+                                        <span class="badge bg-danger">失败</span>
+                                    {% elif run.status == 'running' %}
+                                        <span class="badge bg-primary">运行中</span>
+                                    {% else %}
+                                        <span class="badge bg-secondary">等待中</span>
+                                    {% endif %}
+                                </small>
+                            </div>
+                        {% empty %}
+                            <div class="list-group-item">
+                                <div class="text-center py-3">
+                                    <i class="bi bi-info-circle text-muted me-2"></i>
+                                    暂无活动记录
+                                </div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </div>
+                
+                <div class="text-center">
+                    <a href="{% url 'test_run_list' %}" class="btn btn-outline-primary">
+                        <i class="bi bi-list-ul me-2"></i>查看所有活动
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header">
+                <span>账户安全</span>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-2">密码</h6>
+                            <p>上次更改: 从未</p>
+                            <a href="{% url 'password_change' %}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-lock me-2"></i>更改密码
+                            </a>
+                        </div>
+                    </div>
+                    
+                    <div class="col-md-6">
+                        <div class="mb-4">
+                            <h6 class="text-muted mb-2">账户设置</h6>
+                            <p>管理您的账户设置和偏好</p>
+                            <a href="{% url 'edit_profile' %}" class="btn btn-outline-primary btn-sm">
+                                <i class="bi bi-gear me-2"></i>账户设置
+                            </a>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

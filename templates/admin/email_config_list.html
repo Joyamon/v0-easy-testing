@@ -1,0 +1,146 @@
+{% extends 'base.html' %}
+
+{% block title %}邮件配置 - EasyTesting{% endblock %}
+
+{% block header %}邮件配置{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'email_config_create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> 添加配置
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>类型</th>
+                        <th>发件人</th>
+                        <th>状态</th>
+                        <th>更新时间</th>
+                        <th class="text-end">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for config in configs %}
+                        <tr>
+                            <td>
+                                <span class="fw-medium text-decoration-none text-dark">
+                                    {{ config.name }}
+                                </span>
+                            </td>
+                            <td>{{ config.get_email_backend_display }}</td>
+                            <td>{{ config.default_from_name }} &lt;{{ config.default_from_email }}&gt;</td>
+                            <td>
+                                {% if config.is_active %}
+                                <span class="badge bg-success">已激活</span>
+                                {% else %}
+                                <span class="badge bg-secondary">未激活</span>
+                                {% endif %}
+                            </td>
+                            <td>{{ config.updated_at|date:"Y-m-d H:i" }}</td>
+                            <td class="text-end">
+                                <div class="btn-group">
+                                    <a href="{% url 'email_config_edit' config.pk %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'email_config_test' config.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-envelope"></i>
+                                    </a>
+                                    {% if not config.is_active %}
+                                    <a href="{% url 'email_config_activate' config.pk %}" class="btn btn-sm btn-outline-success">
+                                        <i class="bi bi-check-lg"></i>
+                                    </a>
+                                    {% endif %}
+                                    <a href="{% url 'email_config_delete' config.pk %}" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="6" class="text-center py-5">
+                                <div class="py-5">
+                                    <i class="bi bi-envelope-x display-4 text-muted mb-3"></i>
+                                    <h5>暂无邮件配置</h5>
+                                    <p class="text-muted">创建邮件配置以启用密码重置等功能</p>
+                                    <a href="{% url 'email_config_create' %}" class="btn btn-primary mt-2">
+                                        <i class="bi bi-plus-lg"></i> 添加配置
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% if configs %}
+        {% include 'pagination.html' with page_obj=configs %}
+        {% endif %}
+    </div>
+</div>
+
+<div class="card mt-4">
+    <div class="card-header">
+        <i class="bi bi-info-circle"></i> 邮件配置说明
+    </div>
+    <div class="card-body">
+        <h5>支持的邮件服务</h5>
+        <ul>
+            <li><strong>SMTP</strong> - 标准邮件发送协议，适用于大多数邮件服务</li>
+            <li><strong>SendGrid API</strong> - 使用 SendGrid 的 API 发送邮件</li>
+            <li><strong>Mailgun API</strong> - 使用 Mailgun 的 API 发送邮件</li>
+        </ul>
+
+        <h5>常见 SMTP 服务器设置</h5>
+        <div class="table-responsive">
+            <table class="table table-sm">
+                <thead>
+                    <tr>
+                        <th>服务商</th>
+                        <th>SMTP 服务器</th>
+                        <th>端口</th>
+                        <th>加密</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr>
+                        <td>Gmail</td>
+                        <td>smtp.gmail.com</td>
+                        <td>587</td>
+                        <td>TLS</td>
+                    </tr>
+                    <tr>
+                        <td>Outlook/Hotmail</td>
+                        <td>smtp.office365.com</td>
+                        <td>587</td>
+                        <td>TLS</td>
+                    </tr>
+                    <tr>
+                        <td>QQ 邮箱</td>
+                        <td>smtp.qq.com</td>
+                        <td>465</td>
+                        <td>SSL</td>
+                    </tr>
+                    <tr>
+                        <td>163 邮箱</td>
+                        <td>smtp.163.com</td>
+                        <td>465</td>
+                        <td>SSL</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        <div class="alert alert-warning">
+            <i class="bi bi-exclamation-triangle"></i> 注意：使用第三方邮件服务时，请确保遵守其服务条款和发送限制。
+        </div>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,176 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ environment.name }} - EasyTesting{% endblock %}
+
+{% block header %}环境变量详情: {{ environment.name }}{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group">
+    <a href="{% url 'environment_edit' pk=environment.pk %}" class="btn btn-outline-secondary">
+        <i class="bi bi-pencil"></i> 编辑
+    </a>
+    <a href="{% url 'project_detail' pk=environment.project.pk %}" class="btn btn-outline-primary">
+        <i class="bi bi-folder"></i> 查看项目
+    </a>
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>环境变量详情</span>
+                <a href="{% url 'environment_edit' pk=environment.pk %}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-pencil"></i>
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="mb-4">
+                    <h5 class="text-muted mb-2">项目</h5>
+                    <p>
+                        <a href="{% url 'project_detail' pk=environment.project.pk %}" class="text-decoration-none">
+                            {{ environment.project.name }}
+                        </a>
+                    </p>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-muted mb-2">域名</h5>
+                    <div class="d-flex align-items-center">
+                        <code class="bg-light px-3 py-2 rounded flex-grow-1">{{ environment.base_url }}</code>
+                        <button class="btn btn-sm btn-outline-secondary ms-2" onclick="copyToClipboard('{{ environment.base_url }}')">
+                            <i class="bi bi-clipboard"></i>
+                        </button>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-muted mb-2">创建时间</h5>
+                    <p>{{ environment.created_at|date:"Y-m-d H:i" }}</p>
+                </div>
+
+                <div class="mb-4">
+                    <h5 class="text-muted mb-2">更新时间</h5>
+                    <p>{{ environment.updated_at|date:"Y-m-d H:i" }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-md-6 mb-4">
+        <div class="card h-100">
+            <div class="card-header">
+                <span>环境变量</span>
+            </div>
+            <div class="card-body">
+                {% if environment.variables %}
+                    <div class="table-responsive">
+                        <table class="table table-hover">
+                            <thead>
+                                <tr>
+                                    <th>Key</th>
+                                    <th>Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for key, value in environment.variables.items %}
+                                    <tr>
+                                        <td><code>{{ key }}</code></td>
+                                        <td><code>{{ value }}</code></td>
+                                    </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                {% else %}
+                    <div class="text-center py-4">
+                        <div class="text-muted">
+                            <i class="bi bi-info-circle me-2"></i> 暂时没有环境变量
+                        </div>
+                        <a href="{% url 'environment_edit' pk=environment.pk %}" class="btn btn-sm btn-outline-primary mt-2">
+                            新增环境变量
+                        </a>
+                    </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="row">
+    <div class="col-md-12 mb-4">
+        <div class="card">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span>最近与此环境关联的测试运行</span>
+                <a href="{% url 'test_run_list' %}?environment={{ environment.pk }}" class="btn btn-sm btn-outline-primary">
+                    查看全部
+                </a>
+            </div>
+            <div class="card-body">
+                <div class="table-responsive">
+                    <table class="table table-hover">
+                        <thead>
+                            <tr>
+                                <th>名称</th>
+                                <th>项目</th>
+                                <th>状态</th>
+                                <th>开始时间</th>
+                                <th>结束时间</th>
+                                <th class="text-end">操作</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for test_run in environment.test_runs.all|slice:":5" %}
+                                <tr>
+                                    <td>{{ test_run.name }}</td>
+                                    <td>{{ test_run.project.name }}</td>
+                                    <td>
+                                        {% if test_run.status == 'completed' %}
+                                            <span class="badge bg-success">Completed</span>
+                                        {% elif test_run.status == 'failed' %}
+                                            <span class="badge bg-danger">Failed</span>
+                                        {% elif test_run.status == 'running' %}
+                                            <span class="badge bg-primary">Running</span>
+                                        {% else %}
+                                            <span class="badge bg-secondary">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ test_run.start_time|date:"Y-m-d H:i"|default:"-" }}</td>
+                                    <td>{{ test_run.end_time|date:"Y-m-d H:i"|default:"-" }}</td>
+                                    <td class="text-end">
+                                        <a href="{% url 'test_run_detail' pk=test_run.pk %}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-eye"></i>
+                                        </a>
+                                    </td>
+                                </tr>
+                            {% empty %}
+                                <tr>
+                                    <td colspan="6" class="text-center py-4">
+                                        <div class="text-muted">
+                                            <i class="bi bi-info-circle me-2"></i> 没有与此环境关联的测试运行
+                                        </div>
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+    function copyToClipboard(text) {
+        navigator.clipboard.writeText(text).then(function() {
+            // Show a temporary tooltip or notification
+            alert('Base URL 已复制到剪切板');
+        }, function(err) {
+            console.error('请重试: ', err);
+        });
+    }
+</script>
+{% endblock %}

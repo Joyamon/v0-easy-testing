@@ -1,0 +1,35 @@
+{% load custom_filters %}
+<div class="list-group-item">
+    <div class="d-flex justify-content-between align-items-center">
+        <div>
+            <span style="margin-left: {{ level|multiply:20 }}px;">
+                <i class="bi bi-folder-fill text-warning me-2"></i>
+                <a href="{% url 'test_case_list' %}?project={{ group.project.id }}&group={{ group.id }}" class="text-decoration-none">
+                    {{ group.name }}
+                </a>
+                <span class="badge bg-light text-dark ms-2">{{ group.test_cases.count }} test cases</span>
+                {% if group.children.count > 0 %}
+                <span class="badge bg-light text-dark ms-1">{{ group.children.count }} sub-groups</span>
+                {% endif %}
+            </span>
+        </div>
+        <div>
+            <a href="{% url 'test_case_group_create' %}?project={{ group.project.id }}&parent={{ group.id }}" class="btn btn-sm btn-outline-primary">
+                <i class="bi bi-folder-plus"></i>
+            </a>
+            <a href="{% url 'test_case_create' %}?project={{ group.project.id }}&group={{ group.id }}" class="btn btn-sm btn-outline-success">
+                <i class="bi bi-plus-lg"></i>
+            </a>
+            <a href="{% url 'test_case_group_edit' pk=group.id %}" class="btn btn-sm btn-outline-secondary">
+                <i class="bi bi-pencil"></i>
+            </a>
+            <a href="{% url 'test_case_group_delete' pk=group.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('确认删除分组码?');">
+                <i class="bi bi-trash"></i>
+            </a>
+        </div>
+    </div>
+</div>
+
+{% for child in group.children.all %}
+    {% include 'test_manager/partials/test_case_group_tree_item.html' with group=child level=level|add:1 %}
+{% endfor %}

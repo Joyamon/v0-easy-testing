@@ -1,0 +1,218 @@
+{% if page_obj.has_other_pages %}
+<div class="pagination-container">
+    <!-- 分页控件 - 简洁现代设计 -->
+    <div class="d-flex justify-content-center mt-4 mb-4">
+        <nav aria-label="分页导航">
+            <ul class="pagination modern-pagination">
+                <!-- 上一页按钮 -->
+                <li class="page-item {% if not page_obj.has_previous %}disabled{% endif %}">
+                    <a class="page-link" href="{% if page_obj.has_previous %}?page={{ page_obj.previous_page_number }}{% if per_page %}&per_page={{ per_page }}{% endif %}{% for key, value in request.GET.items %}{% if key != 'page' and key != 'per_page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}{% else %}#{% endif %}" aria-label="上一页" {% if not page_obj.has_previous %}tabindex="-1" aria-disabled="true"{% endif %}>
+                        Previous
+                    </a>
+                </li>
+
+                <!-- 页码显示 -->
+                {% for i in paginator.page_range %}
+                    {% if paginator.num_pages <= 7 or i == 1 or i == paginator.num_pages or i|add:"-2" <= page_obj.number and i|add:"2" >= page_obj.number %}
+                        <li class="page-item {% if page_obj.number == i %}active{% endif %}">
+                            <a class="page-link" href="?page={{ i }}{% if per_page %}&per_page={{ per_page }}{% endif %}{% for key, value in request.GET.items %}{% if key != 'page' and key != 'per_page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}" {% if page_obj.number == i %}aria-current="page"{% endif %}>
+                                {{ i }}
+                            </a>
+                        </li>
+                    {% elif i == 2 and page_obj.number > 4 or i == paginator.num_pages|add:"-1" and page_obj.number < paginator.num_pages|add:"-3" %}
+                        <li class="page-item disabled">
+                            <a class="page-link" href="#" tabindex="-1" aria-disabled="true">...</a>
+                        </li>
+                    {% endif %}
+                {% endfor %}
+
+                <!-- 下一页按钮 -->
+                <li class="page-item {% if not page_obj.has_next %}disabled{% endif %}">
+                    <a class="page-link" href="{% if page_obj.has_next %}?page={{ page_obj.next_page_number }}{% if per_page %}&per_page={{ per_page }}{% endif %}{% for key, value in request.GET.items %}{% if key != 'page' and key != 'per_page' %}&{{ key }}={{ value }}{% endif %}{% endfor %}{% else %}#{% endif %}" aria-label="下一页" {% if not page_obj.has_next %}tabindex="-1" aria-disabled="true"{% endif %}>
+                        Next
+                    </a>
+                </li>
+            </ul>
+        </nav>
+    </div>
+
+    <!-- 每页显示记录数和总记录数 -->
+    <div class="d-flex justify-content-between align-items-center">
+        <div class="pagination-info">
+            <span class="text-muted">
+                {% if test_runs %}
+                    {% if per_page %}
+                        每页显示 {{ per_page }} 条，共 {{ total_count|default:test_runs.paginator.count }} 条
+                    {% else %}
+                        显示 {{ page_obj.start_index }} 到 {{ page_obj.end_index }} 条，共 {{ total_count|default:test_runs.paginator.count }} 条
+                    {% endif %}
+                {% endif %}
+                {% if test_cases %}
+                    {% if per_page %}
+                        每页显示 {{ per_page }} 条，共 {{ total_count|default:test_cases.paginator.count }} 条
+                    {% else %}
+                        显示 {{ page_obj.start_index }} 到 {{ page_obj.end_index }} 条，共 {{ total_count|default:test_cases.paginator.count }} 条
+                    {% endif %}
+                {% endif %}
+                {% if test_suites %}
+                    {% if per_page %}
+                        每页显示 {{ per_page }} 条，共 {{ total_count|default:test_suites.paginator.count }} 条
+                    {% else %}
+                        显示 {{ page_obj.start_index }} 到 {{ page_obj.end_index }} 条，共 {{ total_count|default:test_suites.paginator.count }} 条
+                    {% endif %}
+                {% endif %}
+                {% if environments %}
+                    {% if per_page %}
+                        每页显示 {{ per_page }} 条，共 {{ total_count|default:environments.paginator.count }} 条
+                    {% else %}
+                        显示 {{ page_obj.start_index }} 到 {{ page_obj.end_index }} 条，共 {{ total_count|default:environments.paginator.count }} 条
+                    {% endif %}
+                {% endif %}
+                {% if projects %}
+                    {% if per_page %}
+                        每页显示 {{ per_page }} 条，共 {{ total_count|default:projects.paginator.count }} 条
+                    {% else %}
+                        显示 {{ page_obj.start_index }} 到 {{ page_obj.end_index }} 条，共 {{ total_count|default:projects.paginator.count }} 条
+                    {% endif %}
+                {% endif %}
+
+
+            </span>
+        </div>
+
+        <div class="per-page-selector d-flex align-items-center">
+            <label for="per-page-select" class="me-2 text-muted">每页显示:</label>
+            <select id="per-page-select" class="form-select form-select-sm" style="width: auto;" onchange="changePerPage(this.value)" aria-label="选择每页显示记录数">
+                <option value="10" {% if per_page == 10 %}selected{% endif %}>10</option>
+                <option value="25" {% if per_page == 25 %}selected{% endif %}>25</option>
+                <option value="50" {% if per_page == 50 %}selected{% endif %}>50</option>
+                <option value="100" {% if per_page == 100 %}selected{% endif %}>100</option>
+                <option value="200" {% if per_page == 200 %}selected{% endif %}>200</option>
+            </select>
+        </div>
+    </div>
+</div>
+
+<!-- 分页功能的JavaScript -->
+<script>
+    function changePerPage(value) {
+        // 获取当前URL参数
+        const urlParams = new URLSearchParams(window.location.search);
+
+        // 设置每页显示记录数
+        urlParams.set('per_page', value);
+
+        // 重置到第一页
+        urlParams.set('page', 1);
+
+        // 重定向到新URL
+        window.location.search = urlParams.toString();
+    }
+
+    // 确保分页链接正常工作
+    document.addEventListener('DOMContentLoaded', function() {
+        // 修复末页链接
+        const paginationLinks = document.querySelectorAll('.pagination .page-link');
+
+        paginationLinks.forEach(link => {
+            // 移除可能阻止链接正常工作的事件监听器
+            link.onclick = null;
+
+            // 如果链接被禁用，阻止默认行为
+            if (link.parentElement.classList.contains('disabled')) {
+                link.addEventListener('click', function(e) {
+                    e.preventDefault();
+                });
+            }
+        });
+    });
+</script>
+
+<!-- 添加样式 -->
+<style>
+    /* 现代化分页样式 */
+    .modern-pagination {
+        display: flex;
+        padding-left: 0;
+        list-style: none;
+        border-radius: 0.25rem;
+    }
+
+    .modern-pagination .page-item:first-child .page-link {
+        border-top-left-radius: 0.25rem;
+        border-bottom-left-radius: 0.25rem;
+    }
+
+    .modern-pagination .page-item:last-child .page-link {
+        border-top-right-radius: 0.25rem;
+        border-bottom-right-radius: 0.25rem;
+    }
+
+    .modern-pagination .page-link {
+        position: relative;
+        display: block;
+        padding: 0.5rem 0.75rem;
+        margin-left: -1px;
+        line-height: 1.25;
+        color: #fff;
+        background-color: #343a40;
+        border: 1px solid #454d55;
+        text-decoration: none;
+        transition: background-color 0.15s ease-in-out;
+    }
+
+    .modern-pagination .page-item.active .page-link {
+        z-index: 3;
+        color: #fff;
+        background-color: #007bff;
+        border-color: #007bff;
+    }
+
+    .modern-pagination .page-item.disabled .page-link {
+        color: #6c757d;
+        pointer-events: none;
+        cursor: auto;
+        background-color: #343a40;
+        border-color: #454d55;
+    }
+
+    .modern-pagination .page-link:hover {
+        z-index: 2;
+        color: #fff;
+        background-color: #23272b;
+        border-color: #454d55;
+    }
+
+    .modern-pagination .page-link:focus {
+        z-index: 3;
+        outline: 0;
+        box-shadow: 0 0 0 0.2rem rgba(0, 123, 255, 0.25);
+    }
+
+    /* 其他样式 */
+    .pagination-container {
+        margin-bottom: 1.5rem;
+    }
+
+    .pagination-info {
+        font-size: 0.875rem;
+    }
+
+    .per-page-selector select {
+        min-width: 4.5rem;
+        border-radius: 4px;
+    }
+
+    /* 响应式调整 */
+    @media (max-width: 576px) {
+        .modern-pagination .page-link {
+            padding: 0.25rem 0.5rem;
+            font-size: 0.875rem;
+        }
+
+        .pagination-info, .per-page-selector {
+            font-size: 0.75rem;
+        }
+    }
+</style>
+{% endif %}

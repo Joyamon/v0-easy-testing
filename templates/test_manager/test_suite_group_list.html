@@ -1,0 +1,101 @@
+{% extends 'base.html' %}
+
+{% block title %}测试套件分组 - EasyTesting{% endblock %}
+
+{% block header %}
+    {% if project %}
+    测试套件分组 - {{ project.name }}
+    {% else %}
+    全部测试套件分组
+    {% endif %}
+{% endblock %}
+
+{% block header_buttons %}
+    {% if project %}
+    <div class="btn-group">
+        <a href="{% url 'test_suite_group_create' %}?project={{ project.id }}" class="btn btn-primary">
+            <i class="bi bi-folder-plus"></i> 新增分组
+        </a>
+        <a href="{% url 'test_suite_list' %}?project={{ project.id }}" class="btn btn-outline-primary">
+            <i class="bi bi-list-ul"></i> 查看测试套件分组
+        </a>
+    </div>
+    {% endif %}
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        {% if project %}
+            <div class="alert alert-info mb-4">
+                <div class="d-flex align-items-center">
+                    <i class="bi bi-info-circle-fill me-2"></i>
+                    <div>
+                        <strong>项目:</strong> {{ project.name }}
+                        <a href="{% url 'test_suite_group_list' %}" class="btn btn-sm btn-outline-primary ms-3">
+                            <i class="bi bi-x-lg"></i> 查看全部项目
+                        </a>
+                    </div>
+                </div>
+            </div>
+
+            {% if root_groups %}
+                <div class="mb-4">
+                    <h5 class="mb-3">分组结构</h5>
+                    <div class="list-group">
+                        {% for group in root_groups %}
+                            {% include 'test_manager/partials/test_suite_group_tree_item.html' with group=group level=0 %}
+                        {% endfor %}
+                    </div>
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-folder display-4 text-muted mb-3"></i>
+                    <h5>暂无分组</h5>
+                    <p class="text-muted">创建分组来管理测试套件</p>
+                    <a href="{% url 'test_suite_group_create' %}?project={{ project.id }}" class="btn btn-primary mt-2">
+                        <i class="bi bi-folder-plus"></i> 创建分组
+                    </a>
+                </div>
+            {% endif %}
+        {% else %}
+            {% if project_groups %}
+                <div class="accordion" id="projectGroupsAccordion">
+                    {% for project_group in project_groups %}
+                        <div class="accordion-item">
+                            <h2 class="accordion-header" id="heading{{ project_group.project.id }}">
+                                <button class="accordion-button" type="button" data-bs-toggle="collapse" data-bs-target="#collapse{{ project_group.project.id }}" aria-expanded="true" aria-controls="collapse{{ project_group.project.id }}">
+                                    <i class="bi bi-kanban me-2"></i> {{ project_group.project.name }}
+                                </button>
+                            </h2>
+                            <div id="collapse{{ project_group.project.id }}" class="accordion-collapse collapse show" aria-labelledby="heading{{ project_group.project.id }}" data-bs-parent="#projectGroupsAccordion">
+                                <div class="accordion-body">
+                                    <div class="list-group">
+                                        {% for group in project_group.root_groups %}
+                                            {% include 'test_manager/partials/test_suite_group_tree_item.html' with group=group level=0 %}
+                                        {% endfor %}
+                                    </div>
+                                    <div class="mt-3">
+                                        <a href="{% url 'test_suite_group_create' %}?project={{ project_group.project.id }}" class="btn btn-sm btn-outline-primary">
+                                            <i class="bi bi-folder-plus"></i> 新增分组
+                                        </a>
+                                        <a href="{% url 'test_suite_list' %}?project={{ project_group.project.id }}" class="btn btn-sm btn-outline-secondary ms-2">
+                                            <i class="bi bi-list-ul"></i> 查看测试套件
+                                        </a>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="text-center py-5">
+                    <i class="bi bi-folder display-4 text-muted mb-3"></i>
+                    <h5>暂无分组</h5>
+                    <p class="text-muted">创建分组来管理测试套件（请创建项目后在项目详情中创建分组）</p>
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

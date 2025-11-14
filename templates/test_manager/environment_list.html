@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}环境 - EasyTesting{% endblock %}
+
+{% block header %}环境{% endblock %}
+
+{% block header_buttons %}
+<a href="{% url 'environment_create' %}" class="btn btn-primary">
+    <i class="bi bi-plus-lg"></i> 新增环境
+</a>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        {% if project %}
+        <div class="alert alert-info mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <div>
+                    <strong>按项目筛选:</strong> {{ project.name }}
+                    <a href="{% url 'environment_list' %}" class="btn btn-sm btn-outline-primary ms-3">
+                        <i class="bi bi-x-lg"></i> 清除筛选
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>项目</th>
+                        <th>域名</th>
+                        <th>创建时间</th>
+                        <th class="text-end">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for environment in environments %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'environment_detail' pk=environment.pk %}" class="fw-medium text-decoration-none text-dark">
+                                    {{ environment.name }}
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{% url 'project_detail' pk=environment.project.pk %}" class="text-decoration-none">
+                                    {{ environment.project.name }}
+                                </a>
+                            </td>
+                            <td>
+                                <code class="bg-light px-2 py-1 rounded">{{ environment.base_url }}</code>
+                            </td>
+                            <td>{{ environment.created_at|date:"Y-m-d H:i" }}</td>
+                            <td class="text-end">
+                                <div class="btn-group">
+                                    <a href="{% url 'environment_detail' pk=environment.pk %}" class="btn btn-sm btn-outline-primary">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'environment_edit' pk=environment.pk %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'environment_delete' pk=environment.pk %}" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="5" class="text-center py-5">
+                                <div class="py-5">
+                                    <i class="bi bi-gear-wide-connected display-4 text-muted mb-3"></i>
+                                    <h5>暂无环境</h5>
+                                    <p class="text-muted">创建第一个环境</p>
+                                    <a href="{% url 'environment_create' %}" class="btn btn-primary mt-2">
+                                        <i class="bi bi-plus-lg"></i> 创建环境
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% include 'pagination.html' with page_obj=environments %}
+    </div>
+</div>
+
+{% endblock %}

@@ -1,0 +1,246 @@
+{% extends 'base.html' %}
+
+{% block title %}测试套件 - EasyTesting{% endblock %}
+
+{% block header %}测试套件{% endblock %}
+
+{% block header_buttons %}
+<div class="btn-group">
+    <a href="{% url 'test_suite_create' %}{% if project %}?project={{ project.id }}{% if current_group %}&group={{ current_group.id }}{% endif %}{% endif %}" class="btn btn-primary">
+        <i class="bi bi-plus-lg"></i> 新增测试套件
+    </a>
+    {% if project %}
+    <a href="{% url 'test_suite_group_create' %}?project={{ project.id }}{% if current_group %}&parent={{ current_group.id }}{% endif %}" class="btn btn-outline-primary">
+        <i class="bi bi-folder-plus"></i> 新增分组
+    </a>
+    {% endif %}
+</div>
+{% endblock %}
+
+{% block content %}
+<div class="card">
+    <div class="card-body">
+        {% if project %}
+        <div class="alert alert-info mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-info-circle-fill me-2"></i>
+                <div>
+                    <strong>过滤项目:</strong> {{ project.name }}
+                    <a href="{% url 'test_suite_list' %}" class="btn btn-sm btn-outline-primary ms-3">
+                        <i class="bi bi-x-lg"></i> 清除项目过滤
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        {% if current_group %}
+        <div class="alert alert-info mb-4">
+            <div class="d-flex align-items-center">
+                <i class="bi bi-folder-fill me-2"></i>
+                <div>
+                    <strong>最近分组:</strong> {{ current_group }}
+                    <a href="{% url 'test_suite_list' %}?project={{ project.id }}" class="btn btn-sm btn-outline-primary ms-3">
+                        <i class="bi bi-x-lg"></i> 清除分组过滤
+                    </a>
+                    <a href="{% url 'test_suite_group_edit' pk=current_group.id %}" class="btn btn-sm btn-outline-secondary ms-1">
+                        <i class="bi bi-pencil"></i> 编辑分组
+                    </a>
+                    <a href="{% url 'test_suite_group_delete' pk=current_group.id %}" class="btn btn-sm btn-outline-danger ms-1" onclick="return confirm('确认删除分组码?');">
+                        <i class="bi bi-trash"></i> 删除分组
+                    </a>
+                </div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- 搜索框 -->
+        <div class="mb-4">
+            <form method="get" class="d-flex">
+                {% if project %}
+                <input type="hidden" name="project" value="{{ project.id }}">
+                {% endif %}
+                {% if current_group %}
+                <input type="hidden" name="group" value="{{ current_group.id }}">
+                {% endif %}
+                <div class="input-group">
+                    <input type="text" name="search" class="form-control" placeholder="输入测试套件..." value="{{ search_query }}">
+                    <button type="submit" class="btn btn-primary">
+                        <i class="bi bi-search"></i>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        {% if project and child_groups %}
+        <!-- 显示子分组 -->
+        <div class="mb-4">
+            <h5 class="mb-3">分组</h5>
+            <div class="row row-cols-1 row-cols-md-3 g-3">
+                {% for group in child_groups %}
+                <div class="col">
+                    <div class="card h-100">
+                        <div class="card-body">
+                            <div class="d-flex align-items-center mb-2">
+                                <i class="bi bi-folder fs-4 me-2 text-warning"></i>
+                                <h5 class="card-title mb-0">{{ group.name }}</h5>
+                            </div>
+                            <p class="card-text text-muted small">
+                                {{ group.test_suites.count }} 测试套件
+                                {% if group.children.count > 0 %}
+                                | {{ group.children.count }} 子分组
+                                {% endif %}
+                            </p>
+                            <div class="d-flex justify-content-between mt-3">
+                                <a href="{% url 'test_suite_list' %}?project={{ project.id }}&group={{ group.id }}" class="btn btn-sm btn-outline-primary">
+                                    <i class="bi bi-folder2-open"></i> 打开
+                                </a>
+                                <div>
+                                    <a href="{% url 'test_suite_group_edit' pk=group.id %}" class="btn btn-sm btn-outline-secondary">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'test_suite_group_delete' pk=group.id %}" class="btn btn-sm btn-outline-danger" onclick="return confirm('确定要删除分组?');">
+                                        <i class="bi bi-trash"></i>
+                                    </a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </div>
+        {% endif %}
+
+        <div class="table-responsive">
+            <table class="table table-hover">
+                <thead>
+                    <tr>
+                        <th>名称</th>
+                        <th>项目</th>
+                        <th>分组</th>
+                        <th>测试用例</th>
+                        <th>创建人</th>
+                        <th>创建时间</th>
+                        <th class="text-end">操作</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for test_suite in test_suites %}
+                        <tr>
+                            <td>
+                                <a href="{% url 'test_suite_detail' pk=test_suite.pk %}" class="fw-medium text-decoration-none text-dark">
+                                    {{ test_suite.name }}
+                                </a>
+                            </td>
+                            <td>
+                                <a href="{% url 'project_detail' pk=test_suite.project.pk %}" class="text-decoration-none">
+                                    {{ test_suite.project.name }}
+                                </a>
+                            </td>
+                            <td>
+                                {% if test_suite.group %}
+                                <a href="{% url 'test_suite_list' %}?project={{ test_suite.project.id }}&group={{ test_suite.group.id }}" class="text-decoration-none">
+                                    <i class="bi bi-folder text-warning"></i> {{ test_suite.group.name }}
+                                </a>
+                                {% else %}
+                                <span class="text-muted">-</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                <span class="badge bg-light text-dark">{{ test_suite.test_cases.count }}</span>
+                            </td>
+                            <td>
+                                <div class="d-flex align-items-center">
+                                    <span class="avatar avatar-sm bg-primary rounded-circle me-2 d-flex align-items-center justify-content-center" style="width: 30px; height: 30px;">
+                                        {{ test_suite.created_by.username|first|upper }}
+                                    </span>
+                                    <span>{{ test_suite.created_by.username }}</span>
+                                </div>
+                            </td>
+                            <td>{{ test_suite.created_at|date:"Y-m-d H:i" }}</td>
+                            <td class="text-end">
+                                <div class="btn-group">
+                                    <a href="{% url 'test_suite_detail' pk=test_suite.pk %}" class="btn btn-sm btn-outline-primary" title="查看详情">
+                                        <i class="bi bi-eye"></i>
+                                    </a>
+                                    <a href="{% url 'test_suite_edit' pk=test_suite.pk %}" class="btn btn-sm btn-outline-secondary" title="编辑">
+                                        <i class="bi bi-pencil"></i>
+                                    </a>
+                                    <a href="{% url 'test_suite_run' pk=test_suite.pk %}" class="btn btn-sm btn-outline-success" title="运行">
+                                        <i class="bi bi-play-fill"></i>
+                                    </a>
+                                    <a href="{% url 'scheduled_task_create' %}?test_suite={{ test_suite.pk }}" class="btn btn-sm btn-outline-warning" title="创建定时任务">
+                                        <i class="bi bi-clock"></i>
+                                    </a>
+                                    <div class="btn-group">
+                                        <button type="button" class="btn btn-sm btn-outline-info dropdown-toggle" data-bs-toggle="dropdown" title="更多操作">
+                                            <i class="bi bi-three-dots"></i>
+                                        </button>
+                                        <ul class="dropdown-menu">
+                                            <li><a class="dropdown-item" href="{% url 'scheduled_task_list' %}?test_suite={{ test_suite.pk }}">
+                                                <i class="bi bi-list-task me-2"></i>查看定时任务
+                                            </a></li>
+                                            <li><hr class="dropdown-divider"></li>
+                                            <li><a class="dropdown-item text-danger" href="#" onclick="confirmDelete({{ test_suite.pk }}, '{{ test_suite.name }}')">
+                                                <i class="bi bi-trash me-2"></i>删除套件
+                                            </a></li>
+                                        </ul>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% empty %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5">
+                                <div class="py-5">
+                                    <i class="bi bi-collection display-4 text-muted mb-3"></i>
+                                    <h5>暂无测试套件</h5>
+                                    <p class="text-muted">创建第一个测试套件分组</p>
+                                    <a href="{% url 'test_suite_create' %}{% if project %}?project={{ project.id }}{% if current_group %}&group={{ current_group.id }}{% endif %}{% endif %}" class="btn btn-primary mt-2">
+                                        <i class="bi bi-plus-lg"></i> 创建套件分组
+                                    </a>
+                                </div>
+                            </td>
+                        </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+
+        {% include 'pagination.html' with page_obj=test_suites %}
+    </div>
+</div>
+
+<!-- 删除确认模态框 -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title">确认删除</h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <p>确定要删除测试套件 "<span id="deleteSuiteName"></span>" 吗？</p>
+                <p class="text-danger small">此操作不可撤销，相关的定时任务也将被删除。</p>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">取消</button>
+                <form id="deleteForm" method="post" style="display: inline;">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-danger">确认删除</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+function confirmDelete(suiteId, suiteName) {
+    document.getElementById('deleteSuiteName').textContent = suiteName;
+    document.getElementById('deleteForm').action = `/test-suites/${suiteId}/delete/`;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+
+{% endblock %}

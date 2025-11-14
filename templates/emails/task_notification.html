@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <title>定时任务执行通知</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 5px 5px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 20px;
+            border: 1px solid #dee2e6;
+        }
+        .status-success {
+            color: #28a745;
+            font-weight: bold;
+        }
+        .status-failed {
+            color: #dc3545;
+            font-weight: bold;
+        }
+        .info-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+        }
+        .info-table th,
+        .info-table td {
+            padding: 8px 12px;
+            text-align: left;
+            border-bottom: 1px solid #dee2e6;
+        }
+        .info-table th {
+            background-color: #e9ecef;
+            font-weight: bold;
+        }
+        .footer {
+            background-color: #6c757d;
+            color: white;
+            padding: 15px;
+            text-align: center;
+            border-radius: 0 0 5px 5px;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>EasyTesting 定时任务执行通知</h1>
+    </div>
+
+    <div class="content">
+        <h2>任务执行结果</h2>
+
+        <p>您的定时任务 <strong>{{ scheduled_task.name }}</strong> 已执行完成。</p>
+
+        <p>执行状态:
+            {% if success %}
+                <span class="status-success">✓ 成功</span>
+            {% else %}
+                <span class="status-failed">✗ 失败</span>
+            {% endif %}
+        </p>
+
+        <table class="info-table">
+            <tr>
+                <th>任务名称</th>
+                <td>{{ scheduled_task.name }}</td>
+            </tr>
+            <tr>
+                <th>测试套件</th>
+                <td>{{ scheduled_task.test_suite.name }}</td>
+            </tr>
+            <tr>
+                <th>执行环境</th>
+                <td>{{ scheduled_task.environment.name }}</td>
+            </tr>
+            <tr>
+                <th>开始时间</th>
+                <td>{{ execution_log.start_time|date:"Y-m-d H:i:s" }}</td>
+            </tr>
+            <tr>
+                <th>结束时间</th>
+                <td>{{ execution_log.end_time|date:"Y-m-d H:i:s" }}</td>
+            </tr>
+            <tr>
+                <th>执行时长</th>
+                <td>{{ execution_log.duration|floatformat:2 }} 秒</td>
+            </tr>
+        </table>
+
+        {% if test_run %}
+        <h3>测试结果统计</h3>
+        <table class="info-table">
+            <tr>
+                <th>总测试用例</th>
+                <td>{{ execution_log.total_test_cases }}</td>
+            </tr>
+            <tr>
+                <th>通过</th>
+                <td class="status-success">{{ execution_log.passed_test_cases }}</td>
+            </tr>
+            <tr>
+                <th>失败</th>
+                <td class="status-failed">{{ execution_log.failed_test_cases }}</td>
+            </tr>
+            <tr>
+                <th>错误</th>
+                <td>{{ execution_log.error_test_cases }}</td>
+            </tr>
+            <tr>
+                <th>成功率</th>
+                <td>{{ execution_log.success_rate|floatformat:2 }}%</td>
+            </tr>
+        </table>
+        {% endif %}
+
+        {% if execution_log.error_message %}
+        <h3>错误信息</h3>
+        <div style="background-color: #f8d7da; color: #721c24; padding: 10px; border-radius: 3px;">
+            {{ execution_log.error_message }}
+        </div>
+        {% endif %}
+
+        <p style="margin-top: 20px;">
+            <a href="{{ request.scheme }}://{{ request.get_host }}{% url 'test_run_detail' pk=test_run.id %}"
+               style="background-color: #007bff; color: white; padding: 10px 20px; text-decoration: none; border-radius: 3px;">
+                查看详细结果
+            </a>
+        </p>
+    </div>
+
+    <div class="footer">
+        <p>此邮件由 EasyTesting 自动发送，请勿回复。</p>
+        <p>如需帮助，请联系系统管理员。</p>
+    </div>
+</body>
+</html>

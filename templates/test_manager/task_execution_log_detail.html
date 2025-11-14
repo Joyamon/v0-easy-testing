@@ -1,0 +1,94 @@
+{% extends 'base.html' %}
+
+{% block title %}执行日志详情{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h1 class="mb-4">执行日志详情</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title">基本信息</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>ID:</strong> {{ log.id }}</p>
+                    <p><strong>任务名称:</strong> {{ task.name }}</p>
+                    <p><strong>测试套件:</strong> {{ task.test_suite.name }}</p>
+                    <p><strong>环境:</strong> {{ task.environment.name }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>状态:</strong> 
+                        <span class="badge {% if log.status == 'success' %}bg-success{% elif log.status == 'running' %}bg-info{% else %}bg-danger{% endif %}">
+                            {{ log.get_status_display }}
+                        </span>
+                    </p>
+                    <p><strong>开始时间:</strong> {{ log.start_time }}</p>
+                    <p><strong>结束时间:</strong> {{ log.end_time|default:"-" }}</p>
+                    <p><strong>执行时长:</strong> {{ log.duration|default:"-" }} 秒</p>
+                    <p><strong>重试次数:</strong> {{ log.retry_count }}</p>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title">测试结果</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>总测试用例:</strong> {{ log.total_test_cases }}</p>
+                    <p><strong>通过用例:</strong> {{ log.passed_test_cases }}</p>
+                    <p><strong>失败用例:</strong> {{ log.failed_test_cases }}</p>
+                    <p><strong>错误用例:</strong> {{ log.error_test_cases }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>成功率:</strong> 
+                        {% if log.total_test_cases > 0 %}
+                        {{ log.success_rate|floatformat:1 }}%
+                        {% else %}
+                        -
+                        {% endif %}
+                    </p>
+                    <p><strong>邮件通知:</strong> {{ log.email_sent|yesno:"已发送,未发送" }}</p>
+                    {% if log.email_sent %}
+                    <p><strong>邮件发送时间:</strong> {{ log.email_sent_time }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    {% if log.error_message %}
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title">错误信息</h5>
+        </div>
+        <div class="card-body">
+            <pre class="bg-light p-3 rounded">{{ log.error_message }}</pre>
+        </div>
+    </div>
+    {% endif %}
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">相关链接</h5>
+        </div>
+        <div class="card-body">
+            <div class="btn-group">
+                <a href="#" class="btn btn-secondary">返回执行日志列表</a>
+                {% if log.test_run %}
+                <a href="{% url 'test_run_detail' log.test_run.id %}" class="btn btn-info">查看测试运行详情</a>
+                {% endif %}
+                <form method="post" action="#">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary ms-1">再次执行任务</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}

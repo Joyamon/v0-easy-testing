@@ -1,0 +1,98 @@
+{% extends 'base.html' %}
+
+{% block title %}{{ task.name }} - 执行日志{% endblock %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <h1 class="mb-4">{{ task.name }} - 执行日志</h1>
+    
+    <div class="card mb-4">
+        <div class="card-header">
+            <h5 class="card-title">任务信息</h5>
+        </div>
+        <div class="card-body">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>ID:</strong> {{ task.id }}</p>
+                    <p><strong>名称:</strong> {{ task.name }}</p>
+                    <p><strong>测试套件:</strong> {{ task.test_suite.name }}</p>
+                    <p><strong>环境:</strong> {{ task.environment.name }}</p>
+                    <p><strong>调度类型:</strong> {{ task.get_schedule_type_display }}</p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>状态:</strong> {{ task.get_status_display }}{% if not task.is_enabled %} (已禁用){% endif %}</p>
+                    <p><strong>上次执行:</strong> {{ task.last_run_time|default:"-" }}</p>
+                    <p><strong>下次执行:</strong> {{ task.next_run_time|default:"-" }}</p>
+                    <p><strong>执行次数:</strong> {{ task.total_runs }} (成功: {{ task.successful_runs }}, 失败: {{ task.failed_runs }})</p>
+                    <p><strong>成功率:</strong> {% if task.total_runs > 0 %}{{ task.success_rate|floatformat:1 }}%{% else %}-{% endif %}</p>
+                </div>
+            </div>
+        </div>
+        <div class="card-footer">
+            <div class="btn-group">
+                <form method="post" action="">
+                    {% csrf_token %}
+                    <button type="submit" class="btn btn-primary">立即执行</button>
+                </form>
+                <a href="#" class="btn btn-secondary ms-1">返回任务列表</a>
+            </div>
+        </div>
+    </div>
+    
+    <div class="card">
+        <div class="card-header">
+            <h5 class="card-title">执行日志列表</h5>
+        </div>
+        <div class="card-body">
+            <div class="table-responsive">
+                <table class="table table-striped table-hover">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>开始时间</th>
+                            <th>结束时间</th>
+                            <th>状态</th>
+                            <th>执行时长</th>
+                            <th>测试用例</th>
+                            <th>重试次数</th>
+                            <th>操作</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for log in logs %}
+                        <tr>
+                            <td>{{ log.id }}</td>
+                            <td>{{ log.start_time }}</td>
+                            <td>{{ log.end_time|default:"-" }}</td>
+                            <td>
+                                <span class="badge {% if log.status == 'success' %}bg-success{% elif log.status == 'running' %}bg-info{% else %}bg-danger{% endif %}">
+                                    {{ log.get_status_display }}
+                                </span>
+                            </td>
+                            <td>{{ log.duration|default:"-" }} 秒</td>
+                            <td>
+                                总数: {{ log.total_test_cases }}<br>
+                                通过: {{ log.passed_test_cases }}<br>
+                                失败: {{ log.failed_test_cases }}<br>
+                                错误: {{ log.error_test_cases }}
+                            </td>
+                            <td>{{ log.retry_count }}</td>
+                            <td>
+                                <a href="{% url 'task_execution_log_detail' log.id %}" class="btn btn-sm btn-info">详情</a>
+                                {% if log.test_run %}
+                                <a href="{% url 'test_run_detail' log.test_run.id %}" class="btn btn-sm btn-secondary">测试运行</a>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% empty %}
+                        <tr>
+                            <td colspan="8" class="text-center">没有执行日志</td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
