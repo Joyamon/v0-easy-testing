@@ -5,9 +5,9 @@
 测试用例中，如果请求返回了参数，那么可以在用例中提取参数，并保存到环境变量中，方便后续请求使用。
 
 * *参数提取* : 使用 "$.提取参数路径" 表示提取参数, 例如：
-   ```
+   \`\`\`
    $.data.session_id
-   ```
+   \`\`\`
   <img src="static/pic/提取参数.png" />
   <img src="static/pic/响应体.png" />
   <img src="static/pic/提取结果.png" />
@@ -17,9 +17,9 @@
 在用例中，可以使用参数提取后的参数，用于上下游接口传递 参数。
 
 * *使用参数* : 使用 "$提取参数名" 表示使用参数, 例如：
-   ```
+   \`\`\`
    of_base_language[name]=ZH; PHPSESSID=$session_id
-   ```
+   \`\`\`
    <img src="static/pic/使用提取参数.png" />
    <img src="static/pic/参数化.png" />
 
@@ -30,7 +30,7 @@
 * *mock数据* : 使用 "mock:{mock规则}"
 
 *  为每个字段设计生成规则
- ```markdown
+ \`\`\`markdown
   string：随机英文字母、数字组合，可根据 length 指定长度
   integer：在 min/max 范围内随机生成
   float：指定精度随机生成
@@ -39,11 +39,11 @@
   enum/bool：随机选择或取 true/false
   ...
 
-```
+\`\`\`
   
 * 示例：
 
-```python
+\`\`\`python
 
 [
 {"name": "age", "type": "integer", "min": 18, "max": 60, "required": False},
@@ -58,9 +58,7 @@
 
 ]
 
-```
+\`\`\`
 
 
   <img src="static/pic/mock数据.png" />
-
-  

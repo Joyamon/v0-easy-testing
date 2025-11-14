@@ -33,38 +33,38 @@
 
 1. 拉取代码:
 
-```
+\`\`\`
    git clone https://gitee.com/joyamon/easy-testing.git
-```
+\`\`\`
 
 2. 创建虚拟环境:
-   ```
+   \`\`\`
    python -m venv venv
    source venv/bin/activate 
-   ```
+   \`\`\`
 3. 安装依赖:
-   ```
+   \`\`\`
    pip install -r requirements.txt
-   ```
+   \`\`\`
 4. 生成迁移文件并迁移数据库:
-   ```
+   \`\`\`
    python manage.py makemigrations
    python manage.py migrate
-   ```
+   \`\`\`
 5. 创建管理员:
-   ```
+   \`\`\`
    python manage.py createsuperuser
-   ```
+   \`\`\`
 6. 启动服务器:
-   ```
+   \`\`\`
    python manage.py runserver
-   ```
+   \`\`\`
 7. 启动celery和beat
-   ```
+   \`\`\`
    celery -A EasyTesting worker -l info
    celery -A EasyTesting beat -l info
    
-   ```
+   \`\`\`
 ## 使用
 
 1. 点击 http://localhost:8000/ 访问
